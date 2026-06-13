@@ -204,7 +204,6 @@ class MiniMindModel(nn.Module):
         self.embedding_variant = getattr(config, "embedding_variant", "s1").lower()
         self.embedding_variant_rank = getattr(config, "embedding_variant_rank", 32)
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
-        self._init_input_variant_params()
         self.dropout = nn.Dropout(config.dropout)
         self.layers = nn.ModuleList([MiniMindBlock(l, config) for l in range(self.num_hidden_layers)])
         self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -283,6 +282,7 @@ class MiniMindForCausalLM(PreTrainedModel, GenerationMixin):
         self.lm_head = nn.Linear(self.config.hidden_size, self.config.vocab_size, bias=getattr(self.config, "lm_head_bias", False))
         if getattr(self.config, "tie_word_embeddings", True):
             self.model.embed_tokens.weight = self.lm_head.weight
+        self.model._init_input_variant_params()
         self._init_output_variant_params()
 
     def _zero_init(self, module):

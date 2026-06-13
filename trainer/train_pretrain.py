@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import math
 
 __package__ = "trainer"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -100,7 +101,10 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
             raw_model = model.module if isinstance(model, DistributedDataParallel) else model
             raw_model = getattr(raw_model, '_orig_mod', raw_model)
             state_dict = raw_model.state_dict()
-            torch.save({k: v.half().cpu() for k, v in state_dict.items()}, ckp)
+            os.makedirs(os.path.dirname(ckp) or ".", exist_ok=True)
+            ckp_tmp = ckp + '.tmp'
+            torch.save({k: v.half().cpu() for k, v in state_dict.items()}, ckp_tmp)
+            os.replace(ckp_tmp, ckp)
             lm_checkpoint(lm_config, weight=args.save_weight, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir=args.checkpoint_dir)
             model.train()
             del state_dict
@@ -247,6 +251,13 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
+    parser.add_argument('--num_attention_heads', default=8, type=int, help="attention query heads数量")
+    parser.add_argument('--num_key_value_heads', default=4, type=int, help="attention key/value heads数量")
+    parser.add_argument('--head_dim', default=0, type=int, help="每个attention head的维度，0表示hidden_size/num_attention_heads")
+    parser.add_argument('--intermediate_size', default=0, type=int, help="FFN中间层维度，0表示使用MiniMind默认规则")
+    parser.add_argument('--max_position_embeddings', default=32768, type=int, help="RoPE预计算最大位置长度")
+    parser.add_argument('--rope_theta', default=1e6, type=float, help="RoPE base theta")
+    parser.add_argument('--rms_norm_eps', default=1e-6, type=float, help="RMSNorm epsilon")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument('--tie_word_embeddings', default=1, type=int, choices=[0, 1], help="是否绑定embed_tokens与lm_head（0=untied，参数+vocab_size*hidden_size）")
@@ -255,6 +266,7 @@ if __name__ == "__main__":
     parser.add_argument('--embedding_variant_rank', default=32, type=int, help="S4/S5/S6/S7/S9/S10/S12/S13 低秩rank")
     parser.add_argument("--data_path", type=str, default="../dataset/minimind/pretrain_t2t_mini.jsonl", help="预训练数据路径")
     parser.add_argument("--train_split_ratio", default=1.0, type=float, help="使用数据前多少比例训练，1.0表示全量")
+    parser.add_argument("--split_manifest_path", default="", type=str, help="固定随机切分manifest路径；提供后训练使用manifest中的train补集")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
@@ -278,9 +290,17 @@ if __name__ == "__main__":
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     os.makedirs(args.checkpoint_dir, exist_ok=True)
+    intermediate_size = args.intermediate_size if args.intermediate_size > 0 else math.ceil(args.hidden_size * math.pi / 64) * 64
     lm_config = MiniMindConfig(
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
+        num_attention_heads=args.num_attention_heads,
+        num_key_value_heads=args.num_key_value_heads,
+        head_dim=args.head_dim if args.head_dim > 0 else args.hidden_size // args.num_attention_heads,
+        intermediate_size=intermediate_size,
+        max_position_embeddings=args.max_position_embeddings,
+        rope_theta=args.rope_theta,
+        rms_norm_eps=args.rms_norm_eps,
         use_moe=bool(args.use_moe),
         tie_word_embeddings=bool(args.tie_word_embeddings),
         lm_head_bias=bool(args.lm_head_bias),
@@ -307,13 +327,23 @@ if __name__ == "__main__":
     # ========== 5. 定义模型、数据、优化器 ==========
     model, tokenizer = init_model(lm_config, args.from_weight, tokenizer_path=args.tokenizer_path, device=args.device)
     train_end_index = None
-    if args.train_split_ratio < 1.0:
-        if not 0 < args.train_split_ratio < 1:
-            raise ValueError("--train_split_ratio 必须在 (0, 1] 范围内")
-        total_samples = len(PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len))
-        train_end_index = int(total_samples * args.train_split_ratio)
-        Logger(f"[data] train split: [0, {train_end_index}) / total {total_samples} ({args.train_split_ratio:.2%})")
-    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len, end_index=train_end_index)
+    if args.split_manifest_path:
+        train_ds = PretrainDataset(
+            args.data_path,
+            tokenizer,
+            max_length=args.max_seq_len,
+            split_manifest_path=args.split_manifest_path,
+            split_role="train",
+        )
+        Logger(f"[data] train split manifest: {args.split_manifest_path}, train samples={len(train_ds)}")
+    else:
+        if args.train_split_ratio < 1.0:
+            if not 0 < args.train_split_ratio < 1:
+                raise ValueError("--train_split_ratio 必须在 (0, 1] 范围内")
+            total_samples = len(PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len))
+            train_end_index = int(total_samples * args.train_split_ratio)
+            Logger(f"[data] train split: [0, {train_end_index}) / total {total_samples} ({args.train_split_ratio:.2%})")
+        train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len, end_index=train_end_index)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)

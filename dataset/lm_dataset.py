@@ -3,6 +3,7 @@ import torch
 import json
 import os
 import random
+import bisect
 from pathlib import Path
 from datasets import load_dataset, load_from_disk, Features, Sequence, Value
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -36,16 +37,40 @@ def post_processing_chat(prompt_content, empty_think_ratio=0.2):
     return prompt_content
 
 class PretrainDataset(Dataset):
-    def __init__(self, data_path, tokenizer, max_length=512, start_index=0, end_index=None):
+    def __init__(self, data_path, tokenizer, max_length=512, start_index=0, end_index=None, split_manifest_path="", split_role="train"):
         super().__init__()
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+        if self.pad_token_id is None:
+            raise ValueError("PretrainDataset requires tokenizer.pad_token_id or tokenizer.eos_token_id")
+        self.bos_token_id = tokenizer.bos_token_id
+        self.eos_token_id = tokenizer.eos_token_id
         self.samples = self.load_samples(data_path)
+        self.exclude_indices = None
+        self.virtual_len = None
+        if split_manifest_path:
+            self.apply_split_manifest(split_manifest_path, split_role)
         if start_index < 0:
-            start_index = max(len(self.samples) + start_index, 0)
-        end_index = len(self.samples) if end_index is None or end_index < 0 else min(end_index, len(self.samples))
-        if start_index > 0 or end_index < len(self.samples):
+            start_index = max(len(self) + start_index, 0)
+        end_index = len(self) if end_index is None or end_index < 0 else min(end_index, len(self))
+        if self.exclude_indices is None and (start_index > 0 or end_index < len(self.samples)):
             self.samples = self.samples.select(range(start_index, end_index))
+
+    def apply_split_manifest(self, split_manifest_path, split_role):
+        with open(split_manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        total_samples = int(manifest["total_samples"])
+        if total_samples != len(self.samples):
+            raise ValueError(f"split manifest total_samples={total_samples} != dataset size={len(self.samples)}")
+        eval_indices = sorted(int(i) for i in manifest["eval_indices"])
+        if split_role == "eval":
+            self.samples = self.samples.select(eval_indices)
+        elif split_role == "train":
+            self.exclude_indices = eval_indices
+            self.virtual_len = len(self.samples) - len(eval_indices)
+        else:
+            raise ValueError("--split_role must be train or eval")
 
     def load_samples(self, data_path):
         path = Path(data_path)
@@ -68,25 +93,40 @@ class PretrainDataset(Dataset):
         return load_dataset("json", data_files=data_path, split="train")
 
     def __len__(self):
-        return len(self.samples)
+        return self.virtual_len if self.virtual_len is not None else len(self.samples)
+
+    def map_train_index(self, index):
+        original = index
+        while True:
+            mapped = index + bisect.bisect_right(self.exclude_indices, original)
+            if mapped == original:
+                return mapped
+            original = mapped
 
     def __getitem__(self, index):
+        if self.exclude_indices is not None:
+            index = self.map_train_index(index)
         sample = self.samples[index]
         if "input_ids" in sample:
             input_ids = list(sample["input_ids"])[:self.max_length]
             if len(input_ids) < self.max_length:
-                input_ids += [self.tokenizer.pad_token_id] * (self.max_length - len(input_ids))
+                input_ids += [self.pad_token_id] * (self.max_length - len(input_ids))
             input_ids = torch.tensor(input_ids, dtype=torch.long)
             labels = input_ids.clone()
-            labels[input_ids == self.tokenizer.pad_token_id] = -100
+            labels[input_ids == self.pad_token_id] = -100
             return input_ids, labels
 
-        tokens = self.tokenizer(str(sample['text']), add_special_tokens=False, max_length=self.max_length - 2, truncation=True).input_ids
-        tokens = [self.tokenizer.bos_token_id] + tokens + [self.tokenizer.eos_token_id]
-        input_ids = tokens + [self.tokenizer.pad_token_id] * (self.max_length - len(tokens))
+        special_count = int(self.bos_token_id is not None) + int(self.eos_token_id is not None)
+        text_max_length = max(self.max_length - special_count, 0)
+        tokens = self.tokenizer(str(sample['text']), add_special_tokens=False, max_length=text_max_length, truncation=True).input_ids
+        if self.bos_token_id is not None:
+            tokens = [self.bos_token_id] + tokens
+        if self.eos_token_id is not None:
+            tokens = tokens + [self.eos_token_id]
+        input_ids = tokens + [self.pad_token_id] * (self.max_length - len(tokens))
         input_ids = torch.tensor(input_ids, dtype=torch.long)
         labels = input_ids.clone()
-        labels[input_ids == self.tokenizer.pad_token_id] = -100
+        labels[input_ids == self.pad_token_id] = -100
         return input_ids, labels
 
 
