@@ -25,7 +25,17 @@ UNTIED_VARIANTS = {"s2", "s8", "s9", "s10"}
 
 
 class PretrainEvalDataset(Dataset):
-    def __init__(self, data_path, tokenizer, max_length=340, max_samples=10000, start_index=0, split_manifest_path=""):
+    def __init__(
+        self,
+        data_path,
+        tokenizer,
+        max_length=340,
+        max_samples=10000,
+        start_index=0,
+        split_manifest_path="",
+        shard_index=0,
+        num_shards=1,
+    ):
         self.tokenizer = tokenizer
         self.max_length = max_length
         self.pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
@@ -43,12 +53,21 @@ class PretrainEvalDataset(Dataset):
             eval_indices = sorted(int(i) for i in manifest["eval_indices"])
             if max_samples > 0:
                 eval_indices = eval_indices[:max_samples]
+            if num_shards > 1:
+                if not 0 <= shard_index < num_shards:
+                    raise ValueError("--shard_index must be in [0, --num_shards)")
+                eval_indices = eval_indices[shard_index::num_shards]
             self.samples = samples.select(eval_indices)
         else:
             if start_index < 0:
                 start_index = max(len(samples) + start_index, 0)
             end_index = len(samples) if max_samples <= 0 else min(start_index + max_samples, len(samples))
-            self.samples = samples.select(range(start_index, end_index))
+            indices = list(range(start_index, end_index))
+            if num_shards > 1:
+                if not 0 <= shard_index < num_shards:
+                    raise ValueError("--shard_index must be in [0, --num_shards)")
+                indices = indices[shard_index::num_shards]
+            self.samples = samples.select(indices)
 
     def load_samples(self, data_path):
         if os.path.isdir(data_path) and os.path.exists(os.path.join(data_path, "dataset_info.json")):
@@ -224,6 +243,8 @@ def main():
     parser.add_argument("--start_index", default=0, type=int)
     parser.add_argument("--tail_ratio", default=0.0, type=float, help="若大于0，则从数据尾部该比例开始评估")
     parser.add_argument("--split_manifest_path", default="", type=str, help="固定随机切分manifest路径；提供后评估manifest中的eval indices")
+    parser.add_argument("--shard_index", default=0, type=int, help="当前eval分片编号，用于多进程并行eval")
+    parser.add_argument("--num_shards", default=1, type=int, help="eval总分片数，用于多进程并行eval")
     parser.add_argument("--max_batches", default=0, type=int)
     parser.add_argument("--use_moe", default=0, type=int, choices=[0, 1])
     parser.add_argument("--lm_head_bias", default=1, type=int, choices=[0, 1])
@@ -288,9 +309,12 @@ def main():
         max_samples=args.max_samples,
         start_index=start_index,
         split_manifest_path=args.split_manifest_path,
+        shard_index=args.shard_index,
+        num_shards=args.num_shards,
     )
     loader = DataLoader(eval_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
-    print(f"[eval] data={args.data_path}, samples={len(eval_ds)}, max_seq_len={args.max_seq_len}, batch_size={args.batch_size}")
+    shard_msg = f", shard={args.shard_index}/{args.num_shards}" if args.num_shards > 1 else ""
+    print(f"[eval] data={args.data_path}, samples={len(eval_ds)}, max_seq_len={args.max_seq_len}, batch_size={args.batch_size}{shard_msg}")
 
     results_by_variant = {}
     for variant in variants:

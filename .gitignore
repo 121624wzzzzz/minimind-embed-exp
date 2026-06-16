@@ -13,6 +13,7 @@ wandb/
 runs/
 out_smoke/
 minimind-3/
+weights/
 *.log
 *.pid
 *.pth
