@@ -1,0 +1,4 @@
+dataset,variant,seed,loss,ppl,delta_vs_s1_loss,delta_vs_s1_pct,ppl_delta_vs_s1,ppl_delta_vs_s1_pct,rank_in_seed
+fineedu_qwen3,s3,42,2.741402,15.508713,-0.014371,-0.521%,-0.224491,-1.427%,1
+fineedu_qwen3,s12,42,2.745604,15.574012,-0.010169,-0.369%,-0.159192,-1.012%,2
+fineedu_qwen3,s1,42,2.755773,15.733204,+0.000000,+0.000%,+0.000000,+0.000%,3
