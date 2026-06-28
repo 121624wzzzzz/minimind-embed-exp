@@ -1,0 +1,15 @@
+[
+  {
+    "variant": "s6",
+    "loss": "1.621812",
+    "ppl": "5.062256",
+    "delta_vs_s1": "",
+    "delta_vs_s2": "",
+    "tokens": 27069543,
+    "sequences": 84689,
+    "seconds": "165.83",
+    "data_path": "dataset/minimind/pretrain_t2t.jsonl",
+    "start_index": 8384138,
+    "max_samples": 84689
+  }
+]

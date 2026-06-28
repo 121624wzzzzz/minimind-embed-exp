@@ -1,0 +1,10 @@
+seed,variant,loss,ppl,tokens,sequences,seconds,data_path,start_index,max_samples
+42,s1,2.755773,15.733204,199411665,588235,485.59,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+42,s3,2.741402,15.508713,199411665,588235,4066.30,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+42,s12,2.745604,15.574012,199411665,588235,4071.20,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+123,s1,2.762714,15.842776,199411665,588235,3866.47,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+123,s3,2.758531,15.776650,199411665,588235,3867.32,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+123,s12,2.751806,15.670906,199411665,588235,3869.80,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+2026,s1,2.757664,15.762976,199411665,588235,3866.45,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+2026,s3,2.751138,15.660438,199411665,588235,3866.83,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235
+2026,s12,2.744375,15.554891,199411665,588235,3870.57,dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340,0,588235

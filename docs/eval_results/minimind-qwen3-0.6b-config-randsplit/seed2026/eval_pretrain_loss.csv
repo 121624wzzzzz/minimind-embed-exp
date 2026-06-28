@@ -1,0 +1,3 @@
+variant,loss,ppl,delta_vs_s1,delta_vs_s2,tokens,sequences,seconds,data_path,start_index,max_samples
+s1,1.771202,5.877917,+0.000000,,14880020,84688,612.18,dataset/minimind/pretrain_t2t.jsonl,0,84688
+s12,1.784840,5.958626,+0.013638,,14880020,84688,613.43,dataset/minimind/pretrain_t2t.jsonl,0,84688

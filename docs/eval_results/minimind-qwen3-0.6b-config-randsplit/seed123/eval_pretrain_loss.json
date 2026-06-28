@@ -1,0 +1,28 @@
+[
+  {
+    "variant": "s1",
+    "loss": "1.776776",
+    "ppl": "5.910768",
+    "delta_vs_s1": "+0.000000",
+    "delta_vs_s2": "",
+    "tokens": 14880020,
+    "sequences": 84688,
+    "seconds": "610.85",
+    "data_path": "dataset/minimind/pretrain_t2t.jsonl",
+    "start_index": 0,
+    "max_samples": 84688
+  },
+  {
+    "variant": "s12",
+    "loss": "1.780228",
+    "ppl": "5.931207",
+    "delta_vs_s1": "+0.003452",
+    "delta_vs_s2": "",
+    "tokens": 14880020,
+    "sequences": 84688,
+    "seconds": "611.82",
+    "data_path": "dataset/minimind/pretrain_t2t.jsonl",
+    "start_index": 0,
+    "max_samples": 84688
+  }
+]
