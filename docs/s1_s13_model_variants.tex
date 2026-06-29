@@ -6,8 +6,9 @@
 
 为系统研究 tied embedding/unembedding 矩阵的结构化松绑方式及其对语言模型训练的影响，
 本文在相同的 Transformer 主干上构造十三种 embedding-head 变体，记为 S1--S13。
-所有变体共享相同的模型主干、优化器、训练数据与训练超参数，仅在输入 embedding
-与输出 projection 的有效参数化方式上不同。
+在每一组受控实验内部，所有变体共享相同的模型主干、优化器、训练数据与训练超参数，
+仅在输入 embedding 与输出 projection 的有效参数化方式上不同。不同实验组可以使用不同的
+模型规模、tokenizer、语料和数据切分，跨组结果应按各自实验口径解释。
 
 本文将“松绑”作为总称，表示在标准 tied 结构 $E_{\mathrm{eff}}=U_{\mathrm{eff}}=W$
 之外引入额外自由度。下文中 LoRA 仅指词表维上的加性低秩增量

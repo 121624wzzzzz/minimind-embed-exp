@@ -180,6 +180,32 @@ Large 权重的并行 eval 脚本。当前硬编码 seeds `42,123,2026` 和 vari
 
 ## 数据脚本
 
+`dataset/prepare_fineweb_edu_pretrain.py`
+
+将 FineWeb-Edu parquet 文本使用指定 tokenizer 打包成固定长度的预训练序列。当前
+FineEdu GPT-2 6B 数据来自 `sample/10BT` 的 14 个 parquet，使用 GPT-2 tokenizer、
+seq len `340`，并按顺序保留前 6B token。将同一组原始 parquet 放到下述 input 目录后，
+可以先在临时目录复现并校验：
+
+```bash
+/home/wz/anaconda3/envs/torch24/bin/python dataset/prepare_fineweb_edu_pretrain.py \
+  --input-dir dataset/fineweb_edu/raw/sample/10BT \
+  --input-format parquet \
+  --output-dir /tmp/fineedu_gpt2_6b_rebuild \
+  --tokenizer gpt2 \
+  --max-seq-len 340 \
+  --min-chars 20 \
+  --max-tokens 6000000000 \
+  --num-proc 8 \
+  --batch-size 1000 \
+  --overwrite
+```
+
+当前 packed 目录曾在项目整理时从同一次预处理的 Hugging Face datasets cache 恢复，
+cache prefix 为 `cache-edfc1356ffbd6c6a`。恢复过程按原 shard 顺序截取 17,647,058 条，
+并校验了 schema、长度、token ID 范围和 GPT-2 解码内容；这不是不同来源的数据替换。
+统计见 `dataset/fineweb_edu/gpt2_packed/preprocess_meta.json`。
+
 `data/create_split_manifest.py`
 
 生成固定随机 eval indices manifest。训练使用 manifest 的补集，eval 使用 manifest 中的 eval indices。

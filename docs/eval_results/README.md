@@ -2,6 +2,9 @@
 
 本目录保存从 `logs/` 和 `results/summaries/` 迁出的 eval 结果数据。`logs/` 被 git 忽略，后续需要引用结果时优先看这里。
 
+项目级实验背景、数据指向和综合结论见 [`../实验.md`](../实验.md)；S1-S13 数学定义见
+[`../s1_s13_model_variants.tex`](../s1_s13_model_variants.tex)。
+
 ## 目录说明
 
 | 目录 | 状态 | 主要文件 |
@@ -12,6 +15,10 @@
 | `minimind-qwen3-0.6b-config-randsplit/` | 权重已删除，仅保留结果 | `all_seed_results.csv`, `three_seed_summary.csv`, `seed*/eval_pretrain_loss.*` |
 | `historical-minimind-pretrain-v2-tail/` | 历史摘要，无当前整理权重 | `s1-s13-three-seed-summary.csv`, `s1-s13-per-seed-delta-vs-s1.csv` |
 | `historical-fineedu-gpt2-tail/` | 历史摘要，无当前整理权重 | `fineedu-gpt2-6b-*.csv` |
+
+进行中的 `fineedu-gpt2-6b-randsplit` 尚未完成三个 seed 和完整 eval，因此暂不创建结果归档目录。
+其数据切分为 `data_splits/fineedu_gpt2_6b_random_eval_0.01_seed20260602.json`，运行入口为
+`scripts/train/run_fineedu_gpt2_randsplit_6b.sh`。
 
 ## 实验索引
 
