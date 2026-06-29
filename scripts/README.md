@@ -29,7 +29,7 @@
 | `BATCH_SIZE` | `224` |
 | `EPOCHS` | `2` |
 | `RUN_EVAL` | `1` |
-| `PARALLEL_EVAL` | `1` |
+| `EVAL_MODE` | `variants` |
 
 常用命令：
 
@@ -170,13 +170,34 @@ MAX_STEPS=5 DATA_PATH=../dataset/fineweb_edu/smoke bash scripts/train/train_fine
 
 ## Eval 脚本
 
-`eval/eval_minimind_small_seed_parallel.sh`
-
-当前 small fixedinit/randsplit 实验的并行 eval 脚本。它按 GPU 分配 variants，跑完后合并每个 GPU 的结果，输出 seed 级别的 `eval_pretrain_loss.csv/json`。
-
 `eval/eval_parallel.sh`
 
-Large 权重的并行 eval 脚本。当前硬编码 seeds `42,123,2026` 和 variants `s1,s2,s3,s4,s6,s12`，使用后 1% tail eval。后续如果继续整理，优先把它和 small eval 合并成一个通用 `eval_pretrain_parallel.sh`。
+统一的多 GPU loss/PPL eval 入口，不包含数据集、seed、variant 或模型尺寸的硬编码。
+实验入口负责传入配置，脚本负责 GPU 调度、失败检查和结果合并，最终输出 seed 级别的
+`eval_pretrain_loss.csv/json`。传入 `SUMMARY_DIR` 时，还会扫描其中的 `seed*/` 结果并更新
+`eval_pretrain_loss_all_seeds.csv/json`。
+
+- `EVAL_MODE=variants`：不同 GPU 评测不同 variants，适合 MiniMind 规模的 eval 集。
+- `EVAL_MODE=shards`：所有 GPU 对同一 variant 做数据分片，适合 FineEdu 大规模 eval 集。
+
+```bash
+PY=/home/wz/anaconda3/envs/torch24/bin/python \
+GPU_LIST=0,1,2,3,4,5,6,7 \
+EVAL_MODE=variants \
+VARIANTS=s1,s3,s12 \
+SAVE_DIR=weights/final/minimind-large-tail/seed42 \
+DATA_PATH=dataset/minimind/pretrain_t2t.jsonl \
+TOKENIZER_PATH=model \
+OUTPUT_DIR=logs/manual-eval/seed42 \
+TAIL_RATIO=0.01 \
+HIDDEN_SIZE=1024 \
+NUM_HIDDEN_LAYERS=16 \
+bash scripts/eval/eval_parallel.sh
+```
+
+`run_minimind_small_fixedinit.sh`、`run_minimind_large.sh` 和
+`run_minimind_qwen3_0_6b_config.sh` 默认使用 `variants`；
+`run_fineedu_qwen3_0_6b.sh` 默认使用 `shards`。可通过 `EVAL_MODE` 覆盖。
 
 ## 数据脚本
 

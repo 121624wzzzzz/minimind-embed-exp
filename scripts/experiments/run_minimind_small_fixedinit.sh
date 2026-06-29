@@ -66,8 +66,7 @@ GRAD_LOG_INTERVAL="${GRAD_LOG_INTERVAL:-0}"
 GRAD_SAVE_TENSORS="${GRAD_SAVE_TENSORS:-0}"
 
 RUN_EVAL="${RUN_EVAL:-1}"
-PARALLEL_EVAL="${PARALLEL_EVAL:-1}"
-EVAL_DEVICE="${EVAL_DEVICE:-cuda:0}"
+EVAL_MODE="${EVAL_MODE:-variants}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-64}"
 EVAL_NUM_WORKERS="${EVAL_NUM_WORKERS:-4}"
 
@@ -103,7 +102,7 @@ echo "  LEARNING_RATE      = $LEARNING_RATE"
 echo "  FROM_RESUME        = $FROM_RESUME"
 echo "  MAX_STEPS          = $MAX_STEPS"
 echo "  RUN_EVAL           = $RUN_EVAL"
-echo "  PARALLEL_EVAL      = $PARALLEL_EVAL"
+echo "  EVAL_MODE          = $EVAL_MODE"
 echo "================================================================"
 
 "$PY" scripts/data/create_split_manifest.py \
@@ -162,37 +161,28 @@ for seed in $SEEDS; do
     if [[ "$RUN_EVAL" == "1" ]]; then
         echo
         echo "[fixedinit-small] eval seed=$seed at $(date '+%F %T')"
-        if [[ "$PARALLEL_EVAL" == "1" ]]; then
-            RUN_ID="$RUN_ID" \
-            SEED="$seed" \
-            GPU_LIST="$GPUS" \
-            VARIANTS="$VARIANTS" \
-            WEIGHT_PREFIX="$weight_prefix" \
-            SAVE_DIR="$seed_save_dir" \
-            DATA_PATH="$EVAL_DATA_PATH" \
-            TOKENIZER_PATH="$EVAL_TOKENIZER_PATH" \
-            SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
-            BATCH_SIZE="$EVAL_BATCH_SIZE" \
-            NUM_WORKERS="$EVAL_NUM_WORKERS" \
-            SEED_DIR="$seed_log_dir" \
-            "$ROOT/scripts/eval/eval_minimind_small_seed_parallel.sh"
-        else
-            CUDA_VISIBLE_DEVICES="$GPUS" "$PY" results/eval_pretrain_loss.py \
-                --variants "$VARIANTS" \
-                --weight_prefix "$weight_prefix" \
-                --save_dir "$seed_save_dir" \
-                --data_path "$EVAL_DATA_PATH" \
-                --tokenizer_path "$EVAL_TOKENIZER_PATH" \
-                --tail_ratio 0.0 \
-                --split_manifest_path "$SPLIT_MANIFEST_PATH" \
-                --max_samples 0 \
-                --batch_size "$EVAL_BATCH_SIZE" \
-                --num_workers "$EVAL_NUM_WORKERS" \
-                --lm_head_bias "$LM_HEAD_BIAS" \
-                --device "$EVAL_DEVICE" \
-                --output_csv "$seed_log_dir/eval_pretrain_loss.csv" \
-                --output_json "$seed_log_dir/eval_pretrain_loss.json"
-        fi
+        PY="$PY" \
+        GPU_LIST="$GPUS" \
+        EVAL_MODE="$EVAL_MODE" \
+        VARIANTS="$VARIANTS" \
+        WEIGHT_PREFIX="$weight_prefix" \
+        SAVE_DIR="$seed_save_dir" \
+        DATA_PATH="$EVAL_DATA_PATH" \
+        TOKENIZER_PATH="$EVAL_TOKENIZER_PATH" \
+        OUTPUT_DIR="$seed_log_dir" \
+        SUMMARY_DIR="$LOG_ROOT" \
+        SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
+        TAIL_RATIO=0 \
+        HIDDEN_SIZE=768 \
+        NUM_HIDDEN_LAYERS=8 \
+        NUM_ATTENTION_HEADS=8 \
+        NUM_KEY_VALUE_HEADS=4 \
+        EMBEDDING_VARIANT_RANK="$RANK" \
+        LM_HEAD_BIAS="$LM_HEAD_BIAS" \
+        MAX_SEQ_LEN="$MAX_SEQ_LEN" \
+        EVAL_BATCH_SIZE="$EVAL_BATCH_SIZE" \
+        EVAL_NUM_WORKERS="$EVAL_NUM_WORKERS" \
+        bash "$ROOT/scripts/eval/eval_parallel.sh"
     fi
 done
 

@@ -88,7 +88,7 @@ GRAD_LOG_INTERVAL="${GRAD_LOG_INTERVAL:-1000}"
 GRAD_SAVE_TENSORS="${GRAD_SAVE_TENSORS:-0}"
 
 RUN_EVAL="${RUN_EVAL:-1}"
-EVAL_DEVICE="${EVAL_DEVICE:-cuda:0}"
+EVAL_MODE="${EVAL_MODE:-variants}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-16}"
 EVAL_NUM_WORKERS="${EVAL_NUM_WORKERS:-4}"
 
@@ -125,6 +125,7 @@ echo "  LM_HEAD_BIAS       = $LM_HEAD_BIAS"
 echo "  BATCH_SIZE         = $BATCH_SIZE"
 echo "  EPOCHS             = $EPOCHS"
 echo "  RUN_EVAL           = $RUN_EVAL"
+echo "  EVAL_MODE          = $EVAL_MODE"
 echo "================================================================"
 
 for seed in $SEEDS; do
@@ -180,30 +181,33 @@ for seed in $SEEDS; do
     if [[ "$RUN_EVAL" == "1" ]]; then
         echo
         echo "[qwen3-size-exp] eval seed=$seed at $(date '+%F %T')"
-        CUDA_VISIBLE_DEVICES="$GPUS" "$PY" results/eval_pretrain_loss.py \
-            --variants "$VARIANTS" \
-            --weight_prefix "" \
-            --save_dir "$seed_save_dir" \
-            --data_path "$EVAL_DATA_PATH" \
-            --tokenizer_path "$EVAL_TOKENIZER_PATH" \
-            --hidden_size "$HIDDEN_SIZE" \
-            --num_hidden_layers "$NUM_HIDDEN_LAYERS" \
-            --num_attention_heads "$NUM_ATTENTION_HEADS" \
-            --num_key_value_heads "$NUM_KEY_VALUE_HEADS" \
-            --head_dim "$HEAD_DIM" \
-            --intermediate_size "$INTERMEDIATE_SIZE" \
-            --max_position_embeddings "$MAX_POSITION_EMBEDDINGS" \
-            --rope_theta "$ROPE_THETA" \
-            --rms_norm_eps "$RMS_NORM_EPS" \
-            --tail_ratio "$TAIL_RATIO" \
-            --split_manifest_path "$SPLIT_MANIFEST_PATH" \
-            --max_samples 0 \
-            --batch_size "$EVAL_BATCH_SIZE" \
-            --num_workers "$EVAL_NUM_WORKERS" \
-            --lm_head_bias "$LM_HEAD_BIAS" \
-            --device "$EVAL_DEVICE" \
-            --output_csv "$seed_log_dir/eval_pretrain_loss.csv" \
-            --output_json "$seed_log_dir/eval_pretrain_loss.json"
+        PY="$PY" \
+        GPU_LIST="$GPUS" \
+        EVAL_MODE="$EVAL_MODE" \
+        VARIANTS="$VARIANTS" \
+        WEIGHT_PREFIX="" \
+        SAVE_DIR="$seed_save_dir" \
+        DATA_PATH="$EVAL_DATA_PATH" \
+        TOKENIZER_PATH="$EVAL_TOKENIZER_PATH" \
+        OUTPUT_DIR="$seed_log_dir" \
+        SUMMARY_DIR="$LOG_ROOT" \
+        SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
+        TAIL_RATIO="$TAIL_RATIO" \
+        HIDDEN_SIZE="$HIDDEN_SIZE" \
+        NUM_HIDDEN_LAYERS="$NUM_HIDDEN_LAYERS" \
+        NUM_ATTENTION_HEADS="$NUM_ATTENTION_HEADS" \
+        NUM_KEY_VALUE_HEADS="$NUM_KEY_VALUE_HEADS" \
+        HEAD_DIM="$HEAD_DIM" \
+        INTERMEDIATE_SIZE="$INTERMEDIATE_SIZE" \
+        MAX_POSITION_EMBEDDINGS="$MAX_POSITION_EMBEDDINGS" \
+        ROPE_THETA="$ROPE_THETA" \
+        RMS_NORM_EPS="$RMS_NORM_EPS" \
+        EMBEDDING_VARIANT_RANK="$RANK" \
+        LM_HEAD_BIAS="$LM_HEAD_BIAS" \
+        MAX_SEQ_LEN="$MAX_SEQ_LEN" \
+        EVAL_BATCH_SIZE="$EVAL_BATCH_SIZE" \
+        EVAL_NUM_WORKERS="$EVAL_NUM_WORKERS" \
+        bash "$ROOT/scripts/eval/eval_parallel.sh"
     fi
 done
 
