@@ -36,7 +36,6 @@ for SEED_VALUE in 42 123 2026; do
     SKIP_COMPLETED="1" \
     RUN_EVAL="1" \
     EVAL_BATCH_SIZE="32" \
-    EVAL_DEVICE="cuda:1" \
     LOG_DIR="$ROOT/logs/fineedu-gpt2-6b-randsplit-seed${SEED_VALUE}" \
     bash scripts/train/train_fineedu_gpt2_pretrain.sh
     echo "===== FineEdu GPT2 random split seed ${SEED_VALUE} done $(date '+%F %T') ====="

@@ -58,7 +58,7 @@ SKIP_COMPLETED="${SKIP_COMPLETED:-1}"
 LOG_DIR="${LOG_DIR:-$ROOT/logs/fineedu-gpt2-6b-seed${SEED}}"
 RUN_EVAL="${RUN_EVAL:-1}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-32}"
-EVAL_DEVICE="${EVAL_DEVICE:-cuda:1}"
+EVAL_TAIL_RATIO="${EVAL_TAIL_RATIO:-0.01}"
 
 mkdir -p "$LOG_DIR"
 
@@ -105,6 +105,7 @@ run_variant() {
     fi
     local logfile="$LOG_DIR/${variant}.log"
     local grad_log="$LOG_DIR/${variant}_grad_stats.jsonl"
+    local final_weight="$SAVE_DIR/${save_weight}_768.pth"
     local started=$(date +%s)
 
     echo
@@ -115,9 +116,13 @@ run_variant() {
     echo "  grad_log: $grad_log"
     echo "----------------------------------------------------------------"
 
-    if [[ "$SKIP_COMPLETED" == "1" ]] && grep -q "<<< FINISH $variant" "$logfile" 2>/dev/null; then
-        echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
-        return 0
+    if [[ "$SKIP_COMPLETED" == "1" ]]; then
+        if [[ -f "$final_weight" ]] && \
+            { grep -q "<<< FINISH $variant" "$logfile" 2>/dev/null || \
+                tail -n 20 "$logfile" 2>/dev/null | grep -Pq "Epoch:\[$EPOCHS/$EPOCHS\]\(([0-9]+)/\1\)"; }; then
+            echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
+            return 0
+        fi
     fi
 
     cd "$ROOT/trainer"
@@ -149,10 +154,10 @@ run_variant() {
         --grad_tensor_dir "$LOG_DIR/${variant}_grad_tensors" \
         2>&1 | tee "$logfile"; then
         local elapsed=$(( $(date +%s) - started ))
-        echo "[$(date '+%H:%M:%S')] <<< FINISH $variant in $((elapsed/60))m$((elapsed%60))s"
+        echo "[$(date '+%H:%M:%S')] <<< FINISH $variant in $((elapsed/60))m$((elapsed%60))s" | tee -a "$logfile"
     else
         local elapsed=$(( $(date +%s) - started ))
-        echo "[$(date '+%H:%M:%S')] !!! FAIL $variant after $((elapsed/60))m$((elapsed%60))s"
+        echo "[$(date '+%H:%M:%S')] !!! FAIL $variant after $((elapsed/60))m$((elapsed%60))s" | tee -a "$logfile"
         exit 1
     fi
     cd "$ROOT"
@@ -164,21 +169,128 @@ done
 
 if [[ "$RUN_EVAL" == "1" ]]; then
     cd "$ROOT"
-    CUDA_VISIBLE_DEVICES="$GPUS" "$TORCH24_PREFIX/bin/python" results/eval_pretrain_loss.py \
-        --variants "$(IFS=','; echo "${selected_variants[*]}")" \
-        --weight_prefix "$WEIGHT_PREFIX" \
-        --save_dir "$SAVE_DIR" \
-        --data_path "${DATA_PATH#../}" \
-        --tokenizer_path "$TOKENIZER_PATH" \
-        --tail_ratio 0.01 \
-        --split_manifest_path "$SPLIT_MANIFEST_PATH" \
-        --max_samples 0 \
-        --batch_size "$EVAL_BATCH_SIZE" \
-        --num_workers 4 \
-        --lm_head_bias "$LM_HEAD_BIAS" \
-        --device "$EVAL_DEVICE" \
-        --output_csv "$LOG_DIR/eval_pretrain_loss.csv" \
-        --output_json "$LOG_DIR/eval_pretrain_loss.json"
+
+    eval_tail_ratio="$EVAL_TAIL_RATIO"
+    if [[ -n "$SPLIT_MANIFEST_PATH" ]]; then
+        eval_tail_ratio="0"
+    fi
+
+    IFS=',' read -r -a gpu_ids <<< "$GPUS"
+    eval_variants_arr=("${selected_variants[@]}")
+    num_gpus=${#gpu_ids[@]}
+    num_variants=${#eval_variants_arr[@]}
+
+    # Distribute variants round-robin across GPUs
+    gpu_variant_groups=()
+    for ((i = 0; i < num_variants; i++)); do
+        gpu_idx=$((i % num_gpus))
+        if [[ -n "${gpu_variant_groups[$gpu_idx]:-}" ]]; then
+            gpu_variant_groups[$gpu_idx]="${gpu_variant_groups[$gpu_idx]},${eval_variants_arr[$i]}"
+        else
+            gpu_variant_groups[$gpu_idx]="${eval_variants_arr[$i]}"
+        fi
+    done
+
+    eval_tmpdir="$LOG_DIR/eval_tmp_$$"
+    mkdir -p "$eval_tmpdir"
+    trap 'rm -rf "$eval_tmpdir"' EXIT
+    eval_pids=()
+
+    for ((gpu_idx = 0; gpu_idx < num_gpus; gpu_idx++)); do
+        group_variants="${gpu_variant_groups[$gpu_idx]:-}"
+        [[ -z "$group_variants" ]] && continue
+        gpu_id="${gpu_ids[$gpu_idx]}"
+        tmp_csv="$eval_tmpdir/gpu${gpu_id}.csv"
+        tmp_json="$eval_tmpdir/gpu${gpu_id}.json"
+
+        echo "[eval] launching GPU $gpu_id => variants: $group_variants"
+        env CUDA_VISIBLE_DEVICES="$gpu_id" "$TORCH24_PREFIX/bin/python" results/eval_pretrain_loss.py \
+            --variants "$group_variants" \
+            --weight_prefix "$WEIGHT_PREFIX" \
+            --save_dir "$SAVE_DIR" \
+            --data_path "${DATA_PATH#../}" \
+            --tokenizer_path "$TOKENIZER_PATH" \
+            --tail_ratio "$eval_tail_ratio" \
+            --split_manifest_path "$SPLIT_MANIFEST_PATH" \
+            --max_samples 0 \
+            --batch_size "$EVAL_BATCH_SIZE" \
+            --num_workers 2 \
+            --lm_head_bias "$LM_HEAD_BIAS" \
+            --device "cuda:0" \
+            --output_csv "$tmp_csv" \
+            --output_json "$tmp_json" &
+        eval_pids+=($!)
+    done
+
+    eval_failed=0
+    for pid in "${eval_pids[@]}"; do
+        if ! wait "$pid"; then
+            echo "[eval] GPU eval process $pid failed!"
+            eval_failed=1
+        fi
+    done
+
+    if [[ "$eval_failed" == "1" ]]; then
+        echo "[eval] some eval shards failed, aborting"
+        exit 1
+    fi
+
+    # Merge shards and recompute deltas against the global S1/S2 results.
+    # A shard cannot calculate a baseline delta when that baseline ran on another GPU.
+    expected_variants="$(IFS=','; echo "${eval_variants_arr[*]}")"
+    "$TORCH24_PREFIX/bin/python" - \
+        "$eval_tmpdir" \
+        "$LOG_DIR/eval_pretrain_loss.csv" \
+        "$LOG_DIR/eval_pretrain_loss.json" \
+        "$expected_variants" <<'PY'
+import csv
+import glob
+import json
+import os
+import sys
+from decimal import Decimal
+
+tmpdir, csv_path, json_path, expected_csv = sys.argv[1:]
+expected = expected_csv.split(",")
+fields = [
+    "variant", "loss", "ppl", "delta_vs_s1", "delta_vs_s2",
+    "tokens", "sequences", "seconds", "data_path", "start_index", "max_samples",
+]
+
+rows = []
+for path in sorted(glob.glob(os.path.join(tmpdir, "gpu*.json"))):
+    with open(path, encoding="utf-8") as fh:
+        rows.extend(json.load(fh))
+
+by_variant = {row["variant"]: row for row in rows}
+if len(by_variant) != len(rows):
+    raise RuntimeError("duplicate variants found while merging eval shards")
+missing = [variant for variant in expected if variant not in by_variant]
+unexpected = sorted(set(by_variant) - set(expected))
+if missing or unexpected:
+    raise RuntimeError(f"incomplete eval shards: missing={missing}, unexpected={unexpected}")
+
+rows = [by_variant[variant] for variant in expected]
+baselines = {
+    "delta_vs_s1": Decimal(by_variant["s1"]["loss"]) if "s1" in by_variant else None,
+    "delta_vs_s2": Decimal(by_variant["s2"]["loss"]) if "s2" in by_variant else None,
+}
+for row in rows:
+    loss = Decimal(row["loss"])
+    for field, baseline in baselines.items():
+        row[field] = "" if baseline is None else f"{loss - baseline:+.6f}"
+
+with open(csv_path, "w", newline="", encoding="utf-8") as fh:
+    writer = csv.DictWriter(fh, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(rows)
+with open(json_path, "w", encoding="utf-8") as fh:
+    json.dump(rows, fh, ensure_ascii=False, indent=2)
+print(f"[eval] merged {len(rows)} variants -> {csv_path}")
+print(f"[eval] merged JSON -> {json_path}")
+PY
+    rm -rf "$eval_tmpdir"
+    trap - EXIT
 fi
 
 echo
