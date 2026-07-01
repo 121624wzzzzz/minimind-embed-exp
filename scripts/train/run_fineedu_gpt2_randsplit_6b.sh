@@ -18,7 +18,9 @@ for SEED_VALUE in 42 123 2026; do
     GPUS="0,1,2,3,4,5,6,7" \
     DATA_PATH="../dataset/fineweb_edu/gpt2_packed" \
     TOKENIZER_PATH="gpt2" \
-    WEIGHT_PREFIX="fineedu_gpt2_6b_randsplit_seed${SEED_VALUE}" \
+    SAVE_DIR="$ROOT/weights/final/fineedu-gpt2-randsplit-6b/seed${SEED_VALUE}" \
+    CHECKPOINT_DIR="$ROOT/weights/resume/fineedu-gpt2-randsplit-6b/seed${SEED_VALUE}" \
+    WEIGHT_PREFIX="" \
     TRAIN_SPLIT_RATIO="1.0" \
     SPLIT_MANIFEST_PATH="$MANIFEST" \
     BATCH_SIZE="80" \
