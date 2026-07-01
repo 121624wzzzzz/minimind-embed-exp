@@ -15,12 +15,24 @@
 | `minimind-qwen3-0.6b-config-randsplit/` | 权重已删除，仅保留结果 | `all_seed_results.csv`, `three_seed_summary.csv`, `seed*/eval_pretrain_loss.*` |
 | `historical-minimind-pretrain-v2-tail/` | 历史摘要，无当前整理权重 | `s1-s13-three-seed-summary.csv`, `s1-s13-per-seed-delta-vs-s1.csv` |
 | `historical-fineedu-gpt2-tail/` | 历史摘要，无当前整理权重 | `fineedu-gpt2-6b-*.csv` |
-
-进行中的 `fineedu-gpt2-6b-randsplit` 尚未完成三个 seed 和完整 eval，因此暂不创建结果归档目录。
-其数据切分为 `data_splits/fineedu_gpt2_6b_random_eval_0.01_seed20260602.json`，运行入口为
-`scripts/train/run_fineedu_gpt2_randsplit_6b.sh`。
+| `fineedu-gpt2-6b-randsplit/` | 当前保留权重 | `three_seed_summary.csv`, `seed*/eval_pretrain_loss.*` |
 
 ## 实验索引
+
+### fineedu-gpt2-6b-randsplit
+
+- 权重文件：`weights/final/fineedu_gpt2_6b_randsplit_seed{seed}_{variant}_768.pth`
+- 模型尺寸：MiniMind dense，hidden `768`，layers `8`，约 `97.6M` 参数（GPT-2 词表口径）。
+- 训练数据：`dataset/fineweb_edu/gpt2_packed`，约 6B token。
+- Tokenizer：`gpt2`
+- 切分方式：固定随机 eval manifest，eval ratio `0.01`，seed `20260602`。
+- Split manifest：`data_splits/fineedu_gpt2_6b_random_eval_0.01_seed20260602.json`
+- Eval 集：`176470` sequences，`59764917` 有效 tokens。
+- Seeds：`42`, `123`, `2026`
+- Variants：`s1,s2,s3,s4,s5,s6,s7,s11,s12,s13`
+- 训练时间：2026-06-28 23:07 到 2026-07-01 20:44；eval 于 2026-07-01 20:52 全部完成。
+- 结果文件：`fineedu-gpt2-6b-randsplit/three_seed_summary.csv`
+- 简要结论：random split 下 `s12` 三 seed 平均最好，`s3` 第二，`s6` 第三；`s12` 在三个 seed 上都优于 `s1`。
 
 ### minimind-small-fixedinit-randsplit
 

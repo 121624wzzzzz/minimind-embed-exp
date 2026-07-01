@@ -1,0 +1,11 @@
+variant,loss,ppl,delta_vs_s1,delta_vs_s2,tokens,sequences,seconds,data_path,start_index,max_samples
+s1,3.211132,24.807153,+0.000000,,59764917,176470,235.12,dataset/fineweb_edu/gpt2_packed,0,176470
+s2,3.281955,26.627773,,+0.000000,59764917,176470,234.84,dataset/fineweb_edu/gpt2_packed,0,176470
+s3,3.202984,24.605838,,,59764917,176470,235.24,dataset/fineweb_edu/gpt2_packed,0,176470
+s4,3.207045,24.705984,,,59764917,176470,235.26,dataset/fineweb_edu/gpt2_packed,0,176470
+s5,3.207604,24.719792,,,59764917,176470,252.37,dataset/fineweb_edu/gpt2_packed,0,176470
+s6,3.208423,24.740040,,,59764917,176470,235.89,dataset/fineweb_edu/gpt2_packed,0,176470
+s7,3.210150,24.782807,,,59764917,176470,235.23,dataset/fineweb_edu/gpt2_packed,0,176470
+s11,3.209130,24.757543,,,59764917,176470,235.66,dataset/fineweb_edu/gpt2_packed,0,176470
+s12,3.201113,24.559848,-0.010019,,59764917,176470,235.62,dataset/fineweb_edu/gpt2_packed,0,176470
+s13,3.207758,24.723606,,-0.074196,59764917,176470,235.82,dataset/fineweb_edu/gpt2_packed,0,176470
