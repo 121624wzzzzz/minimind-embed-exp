@@ -264,7 +264,7 @@ if __name__ == "__main__":
     parser.add_argument('--lm_head_bias', default=0, type=int, choices=[0, 1], help="lm_head是否使用vocab维度bias")
     parser.add_argument('--embedding_variant', default='s1', type=str, choices=sorted(VALID_VARIANTS), help="S1-S13 embedding/head 变体")
     parser.add_argument('--embedding_variant_rank', default=32, type=int, help="S4/S5/S6/S7/S9/S10/S12/S13 低秩rank")
-    parser.add_argument("--data_path", type=str, default="../dataset/minimind/pretrain_t2t_mini.jsonl", help="预训练数据路径")
+    parser.add_argument("--data_path", type=str, default="../dataset/minimind/pretrain_t2t.jsonl", help="预训练数据路径")
     parser.add_argument("--train_split_ratio", default=1.0, type=float, help="使用数据前多少比例训练，1.0表示全量")
     parser.add_argument("--split_manifest_path", default="", type=str, help="固定随机切分manifest路径；提供后训练使用manifest中的train补集")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")

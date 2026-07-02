@@ -39,7 +39,7 @@ RUN_ID="${RUN_ID:-$(date +%Y%m%d_%H%M%S)}"
 LOG_ROOT="${LOG_ROOT:-$ROOT/logs/fineedu-gpt2/$RUN_ID}"
 RUN_LOG="$LOG_ROOT/run.log"
 
-DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/gpt2_packed}"
+DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/packed/gpt2_6b_seq340}"
 TOKENIZER_PATH="${TOKENIZER_PATH:-gpt2}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-}"
 

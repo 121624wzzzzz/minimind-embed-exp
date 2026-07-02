@@ -4,7 +4,7 @@
 #
 # Examples:
 #   bash scripts/train/train_minimind_small_variants.sh
-#   VARIANTS=s3,s4 MAX_STEPS=5 DATA_PATH=../dataset/minimind/pretrain_t2t_mini.jsonl bash scripts/train/train_minimind_small_variants.sh
+#   VARIANTS=s3,s4 MAX_STEPS=5 DATA_PATH=../dataset/minimind/pretrain_t2t.jsonl bash scripts/train/train_minimind_small_variants.sh
 #   START=s4 END=s13 FROM_RESUME=1 bash scripts/train/train_minimind_small_variants.sh
 # ==============================================================================
 set -euo pipefail

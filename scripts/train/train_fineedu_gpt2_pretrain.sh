@@ -32,7 +32,7 @@ export PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
 
 GPUS="${GPUS:-0,1,2,3,4,5,6,7}"
 NPROC=$(echo "$GPUS" | tr ',' '\n' | wc -l)
-DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/gpt2_packed}"
+DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/packed/gpt2_6b_seq340}"
 TOKENIZER_PATH="${TOKENIZER_PATH:-gpt2}"
 SAVE_DIR="${SAVE_DIR:-$ROOT/weights/final}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-$ROOT/weights/resume}"

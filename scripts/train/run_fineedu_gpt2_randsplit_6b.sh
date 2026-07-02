@@ -16,7 +16,7 @@ for SEED_VALUE in 42 123 2026; do
     SEED="$SEED_VALUE" \
     VARIANTS="s1,s2,s3,s4,s5,s6,s7,s11,s12,s13" \
     GPUS="0,1,2,3,4,5,6,7" \
-    DATA_PATH="../dataset/fineweb_edu/gpt2_packed" \
+    DATA_PATH="../dataset/fineweb_edu/packed/gpt2_6b_seq340" \
     TOKENIZER_PATH="gpt2" \
     SAVE_DIR="$ROOT/weights/final/fineedu-gpt2-randsplit-6b/seed${SEED_VALUE}" \
     CHECKPOINT_DIR="$ROOT/weights/resume/fineedu-gpt2-randsplit-6b/seed${SEED_VALUE}" \

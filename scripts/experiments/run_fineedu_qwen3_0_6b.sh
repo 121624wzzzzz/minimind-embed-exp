@@ -38,13 +38,13 @@ SEEDS="${SEEDS:-42 123 2026}"
 VARIANTS="${VARIANTS:-s1,s2,s3,s6,s12}"
 
 # ---- 数据 & 切分 ----
-DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340}"
-EVAL_DATA_PATH="${EVAL_DATA_PATH:-dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340}"
+DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/packed/qwen3_20b_seq340}"
+EVAL_DATA_PATH="${EVAL_DATA_PATH:-dataset/fineweb_edu/packed/qwen3_20b_seq340}"
 TOKENIZER_PATH="${TOKENIZER_PATH:-Qwen/Qwen3-0.6B}"
 EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-$TOKENIZER_PATH}"
 # train script runs from trainer/, need ../ prefix; eval runs from project root
-SPLIT_MANIFEST_TRAIN_PATH="${SPLIT_MANIFEST_TRAIN_PATH:-../data_splits/fineedu_qwen3_modelscope_20b_random_eval_0.01_seed20260602.json}"
-SPLIT_MANIFEST_EVAL_PATH="${SPLIT_MANIFEST_EVAL_PATH:-data_splits/fineedu_qwen3_modelscope_20b_random_eval_0.01_seed20260602.json}"
+SPLIT_MANIFEST_TRAIN_PATH="${SPLIT_MANIFEST_TRAIN_PATH:-../data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json}"
+SPLIT_MANIFEST_EVAL_PATH="${SPLIT_MANIFEST_EVAL_PATH:-data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json}"
 
 # ---- 命名空间 & 输出路径 ----
 WEIGHT_NAMESPACE="${WEIGHT_NAMESPACE:-fineedu-qwen3-0.6b}"

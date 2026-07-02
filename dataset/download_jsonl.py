@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download MiniMind jsonl datasets into this directory."""
+"""Download MiniMind jsonl datasets into dataset/minimind."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path(__file__).resolve().parent,
+        default=Path(__file__).resolve().parent / "minimind",
         help="Directory to save jsonl files",
     )
     parser.add_argument(

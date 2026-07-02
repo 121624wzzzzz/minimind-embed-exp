@@ -221,9 +221,9 @@ def write_results(results, args):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate MiniMind pretrain loss for S1-S13 variants.")
-    parser.add_argument("--data_path", default="../dataset/minimind/pretrain_t2t_mini.jsonl", type=str)
-    parser.add_argument("--tokenizer_path", default="../model", type=str)
-    parser.add_argument("--save_dir", default="../weights/final", type=str)
+    parser.add_argument("--data_path", default="dataset/minimind/pretrain_t2t.jsonl", type=str)
+    parser.add_argument("--tokenizer_path", default="model", type=str)
+    parser.add_argument("--save_dir", default="weights/final", type=str)
     parser.add_argument("--weight_prefix", default="pretrain_v2", type=str)
     parser.add_argument("--variants", default="s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13", type=str)
     parser.add_argument("--embedding_variant_rank", default=32, type=int)

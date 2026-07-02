@@ -17,8 +17,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=Path(__file__).resolve().parent / "fineweb_edu" / "raw" / "sample" / "10BT",
-        help="Directory containing FineWeb-Edu parquet files or cached Arrow shards.",
+        default=None,
+        help="Directory containing FineWeb-Edu parquet or Arrow shards; required unless --streaming is used.",
     )
     parser.add_argument(
         "--input-format",
@@ -40,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path(__file__).resolve().parent / "fineweb_edu" / "gpt2_packed",
+        required=True,
         help="Directory for the packed Hugging Face dataset.",
     )
     parser.add_argument(
@@ -343,6 +343,8 @@ def write_local_streaming_packed(args: argparse.Namespace, tokenizer, eos_id: in
 
 def main() -> int:
     args = parse_args()
+    if not args.streaming and args.input_dir is None:
+        raise ValueError("--input-dir is required unless --streaming is used")
     if args.output_dir.exists() and not args.overwrite:
         raise FileExistsError(f"{args.output_dir} already exists; pass --overwrite to replace it")
     if args.output_dir.exists() and args.overwrite:

@@ -24,7 +24,7 @@
 - 权重目录：`weights/final/fineedu-gpt2-randsplit-6b/seed{seed}/`
 - Resume 目录：`weights/resume/fineedu-gpt2-randsplit-6b/seed{seed}/`
 - 模型尺寸：MiniMind dense，hidden `768`，layers `8`，约 `97.6M` 参数（GPT-2 词表口径）。
-- 训练数据：`dataset/fineweb_edu/gpt2_packed`，约 6B token。
+- 训练数据：`dataset/fineweb_edu/packed/gpt2_6b_seq340`，约 6B token。
 - Tokenizer：`gpt2`
 - 切分方式：固定随机 eval manifest，eval ratio `0.01`，seed `20260602`。
 - Split manifest：`data_splits/fineedu_gpt2_6b_random_eval_0.01_seed20260602.json`
@@ -81,10 +81,10 @@
 
 - 权重目录：`weights/final/fineedu-qwen3-0.6b/`
 - 模型尺寸：Qwen3-0.6B 对齐配置，hidden `1024`，layers `28`，GQA `16/8`，约 `595.8M` 参数。
-- 训练数据：`dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340`
+- 训练数据：`dataset/fineweb_edu/packed/qwen3_20b_seq340`
 - Tokenizer：`Qwen/Qwen3-0.6B`
 - 切分方式：固定随机 eval manifest，eval ratio `0.01`，seed `20260602`。
-- Split manifest：`data_splits/fineedu_qwen3_modelscope_20b_random_eval_0.01_seed20260602.json`
+- Split manifest：`data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json`
 - Seeds：`42`, `123`, `2026`
 - Variants：`s1,s3,s12`
 - 训练时间：2026-06-11 到 2026-06-28。

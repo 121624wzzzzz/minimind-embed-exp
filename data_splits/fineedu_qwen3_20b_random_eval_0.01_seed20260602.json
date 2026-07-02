@@ -1,7 +1,7 @@
 {
   "version": 1,
   "method": "fixed_random_eval_indices",
-  "data_path": "dataset/fineweb_edu/qwen3_modelscope_100bt_20b_packed_340",
+  "data_path": "dataset/fineweb_edu/packed/qwen3_20b_seq340",
   "total_samples": 58823529,
   "eval_ratio": 0.01,
   "eval_count": 588235,

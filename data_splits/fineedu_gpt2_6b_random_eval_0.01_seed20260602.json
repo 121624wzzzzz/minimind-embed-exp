@@ -1,7 +1,7 @@
 {
   "version": 1,
   "method": "fixed_random_eval_indices",
-  "data_path": "dataset/fineweb_edu/gpt2_packed",
+  "data_path": "dataset/fineweb_edu/packed/gpt2_6b_seq340",
   "total_samples": 17647058,
   "eval_ratio": 0.01,
   "eval_count": 176470,

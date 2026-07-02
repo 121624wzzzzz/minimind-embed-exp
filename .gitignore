@@ -25,7 +25,7 @@ weights/
 dataset/*
 !dataset/
 !dataset/__init__.py
-!dataset/dataset.md
+!dataset/README.md
 !dataset/lm_dataset.py
 !dataset/download_jsonl.py
 !dataset/prepare_fineweb_edu_pretrain.py

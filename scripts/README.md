@@ -210,7 +210,7 @@ seq len `340`，并按顺序保留前 6B token。将同一组原始 parquet 放�
 
 ```bash
 /home/wz/anaconda3/envs/torch24/bin/python dataset/prepare_fineweb_edu_pretrain.py \
-  --input-dir dataset/fineweb_edu/raw/sample/10BT \
+  --input-dir dataset/fineweb_edu/raw/gpt2_sample_10bt \
   --input-format parquet \
   --output-dir /tmp/fineedu_gpt2_6b_rebuild \
   --tokenizer gpt2 \
@@ -225,7 +225,7 @@ seq len `340`，并按顺序保留前 6B token。将同一组原始 parquet 放�
 当前 packed 目录曾在项目整理时从同一次预处理的 Hugging Face datasets cache 恢复，
 cache prefix 为 `cache-edfc1356ffbd6c6a`。恢复过程按原 shard 顺序截取 17,647,058 条，
 并校验了 schema、长度、token ID 范围和 GPT-2 解码内容；这不是不同来源的数据替换。
-统计见 `dataset/fineweb_edu/gpt2_packed/preprocess_meta.json`。
+统计见 `dataset/fineweb_edu/packed/gpt2_6b_seq340/preprocess_meta.json`。
 
 `data/create_split_manifest.py`
 
