@@ -21,7 +21,7 @@ VARIANTS_CSV="${VARIANTS:-s1}"
 : "${OUTPUT_DIR:?OUTPUT_DIR is required}"
 
 WEIGHT_PREFIX="${WEIGHT_PREFIX:-}"
-WORK_DIR="${WORK_DIR:-$OUTPUT_DIR/eval_parallel}"
+WORK_ROOT="${WORK_DIR:-$OUTPUT_DIR/eval_parallel}"
 OUTPUT_CSV="${OUTPUT_CSV:-$OUTPUT_DIR/eval_pretrain_loss.csv}"
 OUTPUT_JSON="${OUTPUT_JSON:-$OUTPUT_DIR/eval_pretrain_loss.json}"
 SUMMARY_DIR="${SUMMARY_DIR:-}"
@@ -83,11 +83,13 @@ if [[ ! -f "$EVALUATOR" ]]; then
     exit 2
 fi
 
-mkdir -p "$OUTPUT_DIR" "$WORK_DIR"
-find "$WORK_DIR" -maxdepth 1 -type f \
-    \( -name 'worker_*.log' -o -name 'worker_*.csv' -o -name 'worker_*.json' \
-       -o -name 'shard_*.log' -o -name 'shard_*.csv' -o -name 'shard_*.json' \) \
-    -delete
+if [[ -n "$SPLIT_MANIFEST_PATH" && "$TAIL_RATIO" != "0" && "$TAIL_RATIO" != "0.0" ]]; then
+    echo "[parallel-eval] split manifest provided; ignoring TAIL_RATIO=$TAIL_RATIO"
+    TAIL_RATIO=0
+fi
+
+mkdir -p "$OUTPUT_DIR" "$WORK_ROOT"
+WORK_DIR="$(mktemp -d "$WORK_ROOT/run.XXXXXX")"
 
 echo "[parallel-eval] mode=$EVAL_MODE"
 echo "[parallel-eval] gpus=${GPUS[*]}"
@@ -96,13 +98,26 @@ echo "[parallel-eval] weights=$SAVE_DIR"
 echo "[parallel-eval] output=$OUTPUT_CSV"
 
 PIDS=()
+EVAL_SUCCEEDED=0
 stop_workers() {
     local pid
     for pid in "${PIDS[@]:-}"; do
         kill "$pid" 2>/dev/null || true
     done
 }
-trap stop_workers INT TERM
+cleanup() {
+    stop_workers
+    if [[ "$EVAL_SUCCEEDED" == "1" ]]; then
+        rm -rf "$WORK_DIR"
+    else
+        echo "[parallel-eval] retained diagnostics: $WORK_DIR" >&2
+    fi
+}
+handle_signal() {
+    exit 130
+}
+trap cleanup EXIT
+trap handle_signal INT TERM
 
 run_worker() {
     local gpu="$1"
@@ -338,5 +353,5 @@ for row in rows:
     )
 PY
 
-trap - INT TERM
+EVAL_SUCCEEDED=1
 echo "[parallel-eval] done"

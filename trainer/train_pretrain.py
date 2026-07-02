@@ -17,14 +17,14 @@ from torch import optim, nn
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig
+from model.variant_config import VALID_VARIANTS, variant_tie_word_embeddings
 from dataset.lm_dataset import PretrainDataset
 from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler
 
 warnings.filterwarnings('ignore')
 
 
-UNTIED_VARIANTS = {"s2", "s8", "s9", "s10"}
-VALID_VARIANTS = {f"s{i}" for i in range(1, 14)}
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def normalize_variant_args(args):
@@ -33,7 +33,7 @@ def normalize_variant_args(args):
         raise ValueError(f"--embedding_variant 必须是 s1-s13，当前为 {args.embedding_variant}")
     if args.embedding_variant_rank <= 0:
         raise ValueError("--embedding_variant_rank 必须为正整数")
-    required_tie = 0 if args.embedding_variant in UNTIED_VARIANTS else 1
+    required_tie = int(variant_tie_word_embeddings(args.embedding_variant))
     if args.tie_word_embeddings != required_tie:
         Logger(f"[variant] {args.embedding_variant} 自动设置 tie_word_embeddings={required_tie}（原值 {args.tie_word_embeddings}）")
         args.tie_word_embeddings = required_tie
@@ -236,8 +236,8 @@ def log_embedding_grad_stats(epoch, step, res, labels):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MiniMind Pretraining")
-    parser.add_argument("--save_dir", type=str, default="weights/final", help="模型保存目录")
-    parser.add_argument("--checkpoint_dir", type=str, default="weights/resume", help="续训快照保存目录")
+    parser.add_argument("--save_dir", type=str, default=os.path.join(PROJECT_ROOT, "weights/final"), help="模型保存目录")
+    parser.add_argument("--checkpoint_dir", type=str, default=os.path.join(PROJECT_ROOT, "weights/resume"), help="续训快照保存目录")
     parser.add_argument('--save_weight', default='pretrain', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
@@ -261,10 +261,10 @@ if __name__ == "__main__":
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument('--tie_word_embeddings', default=1, type=int, choices=[0, 1], help="是否绑定embed_tokens与lm_head（0=untied，参数+vocab_size*hidden_size）")
-    parser.add_argument('--lm_head_bias', default=0, type=int, choices=[0, 1], help="lm_head是否使用vocab维度bias")
+    parser.add_argument('--lm_head_bias', default=1, type=int, choices=[0, 1], help="lm_head是否使用vocab维度bias")
     parser.add_argument('--embedding_variant', default='s1', type=str, choices=sorted(VALID_VARIANTS), help="S1-S13 embedding/head 变体")
     parser.add_argument('--embedding_variant_rank', default=32, type=int, help="S4/S5/S6/S7/S9/S10/S12/S13 低秩rank")
-    parser.add_argument("--data_path", type=str, default="../dataset/minimind/pretrain_t2t.jsonl", help="预训练数据路径")
+    parser.add_argument("--data_path", type=str, default=os.path.join(PROJECT_ROOT, "dataset/minimind/pretrain_t2t.jsonl"), help="预训练数据路径")
     parser.add_argument("--train_split_ratio", default=1.0, type=float, help="使用数据前多少比例训练，1.0表示全量")
     parser.add_argument("--split_manifest_path", default="", type=str, help="固定随机切分manifest路径；提供后训练使用manifest中的train补集")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
@@ -274,11 +274,11 @@ if __name__ == "__main__":
     parser.add_argument("--use_compile", default=0, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     parser.add_argument("--max_steps", default=0, type=int, help="每个epoch最多训练step数，0表示不限制")
     parser.add_argument("--seed", default=42, type=int, help="随机种子基值")
-    parser.add_argument("--tokenizer_path", default="../model", type=str, help="Tokenizer路径或Hugging Face名称")
+    parser.add_argument("--tokenizer_path", default=os.path.join(PROJECT_ROOT, "model"), type=str, help="Tokenizer路径或Hugging Face名称")
     parser.add_argument("--grad_log_interval", default=0, type=int, help="每隔多少个optimizer step记录embedding/unembedding梯度，0表示关闭")
-    parser.add_argument("--grad_log_path", default="../logs/grad_stats.jsonl", type=str, help="梯度统计JSONL输出路径")
+    parser.add_argument("--grad_log_path", default=os.path.join(PROJECT_ROOT, "logs/grad_stats.jsonl"), type=str, help="梯度统计JSONL输出路径")
     parser.add_argument("--grad_save_tensors", default=0, type=int, choices=[0, 1], help="是否保存梯度tensor快照")
-    parser.add_argument("--grad_tensor_dir", default="../logs/grad_tensors", type=str, help="梯度tensor快照输出目录")
+    parser.add_argument("--grad_tensor_dir", default=os.path.join(PROJECT_ROOT, "logs/grad_tensors"), type=str, help="梯度tensor快照输出目录")
     args = parser.parse_args()
     args = normalize_variant_args(args)
 
@@ -325,7 +325,13 @@ if __name__ == "__main__":
         wandb.init(project=args.wandb_project, name=wandb_run_name, id=wandb_id, resume=resume)
     
     # ========== 5. 定义模型、数据、优化器 ==========
-    model, tokenizer = init_model(lm_config, args.from_weight, tokenizer_path=args.tokenizer_path, device=args.device)
+    model, tokenizer = init_model(
+        lm_config,
+        args.from_weight,
+        tokenizer_path=args.tokenizer_path,
+        save_dir=args.save_dir,
+        device=args.device,
+    )
     train_end_index = None
     if args.split_manifest_path:
         train_ds = PretrainDataset(

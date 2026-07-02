@@ -4,7 +4,7 @@
 #
 # Examples:
 #   bash scripts/train/train_minimind_small_variants.sh
-#   VARIANTS=s3,s4 MAX_STEPS=5 DATA_PATH=../dataset/minimind/pretrain_t2t.jsonl bash scripts/train/train_minimind_small_variants.sh
+#   VARIANTS=s3,s4 MAX_STEPS=5 DATA_PATH=dataset/minimind/pretrain_t2t.jsonl bash scripts/train/train_minimind_small_variants.sh
 #   START=s4 END=s13 FROM_RESUME=1 bash scripts/train/train_minimind_small_variants.sh
 # ==============================================================================
 set -euo pipefail
@@ -13,9 +13,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-if [[ ! -x "$TORCH24_PREFIX/bin/python" ]]; then
-    echo "[small-variants] 找不到 torch24 Python: $TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
+if [[ ! -x "$PY" ]]; then
+    echo "[small-variants] 找不到 Python: $PY"
     exit 1
 fi
 
@@ -30,9 +31,9 @@ export PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
 
 GPUS="${GPUS:-0,1,2,3,4,5,6,7}"
 NPROC=$(echo "$GPUS" | tr ',' '\n' | wc -l)
-DATA_PATH="${DATA_PATH:-../dataset/minimind/pretrain_t2t.jsonl}"
-SAVE_DIR="${SAVE_DIR:-weights/final}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-weights/resume}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/minimind/pretrain_t2t.jsonl}"
+SAVE_DIR="${SAVE_DIR:-$ROOT/weights/final}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-$ROOT/weights/resume}"
 WEIGHT_PREFIX="${WEIGHT_PREFIX-pretrain_v2}"
 SEED="${SEED:-42}"
 RANK="${RANK:-32}"
@@ -49,11 +50,11 @@ MAX_STEPS="${MAX_STEPS:-0}"
 LM_HEAD_BIAS="${LM_HEAD_BIAS:-1}"
 TRAIN_SPLIT_RATIO="${TRAIN_SPLIT_RATIO:-0.99}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-}"
-TOKENIZER_PATH="${TOKENIZER_PATH:-../model}"
+TOKENIZER_PATH="${TOKENIZER_PATH:-$ROOT/model}"
 GRAD_LOG_INTERVAL="${GRAD_LOG_INTERVAL:-0}"
 GRAD_SAVE_TENSORS="${GRAD_SAVE_TENSORS:-0}"
 SKIP_COMPLETED="${SKIP_COMPLETED:-1}"
-LOG_DIR="${LOG_DIR:-$ROOT/logs/minimind-small-variants}"
+LOG_DIR="${LOG_DIR:-$ROOT/logs/minimind-small-variants/seed${SEED}}"
 
 mkdir -p "$LOG_DIR"
 
@@ -115,6 +116,7 @@ run_variant() {
         save_weight="${WEIGHT_PREFIX}_${variant}"
     fi
     local logfile="$LOG_DIR/${variant}.log"
+    local final_weight="$SAVE_DIR/${save_weight}_768.pth"
     local started=$(date +%s)
 
     echo
@@ -124,13 +126,15 @@ run_variant() {
     echo "  log: $logfile"
     echo "----------------------------------------------------------------"
 
-    if [[ "$SKIP_COMPLETED" == "1" ]] && grep -q "<<< FINISH $variant" "$logfile" 2>/dev/null; then
-        echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
-        return 0
+    if [[ "$SKIP_COMPLETED" == "1" && -f "$final_weight" ]]; then
+        if grep -Eq "<<< (DONE|FINISH) $variant" "$logfile" 2>/dev/null || \
+            tail -n 20 "$logfile" 2>/dev/null | grep -Pq "Epoch:\[$EPOCHS/$EPOCHS\]\(([0-9]+)/\1\)"; then
+            echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
+            return 0
+        fi
     fi
 
-    cd "$ROOT/trainer"
-    if torchrun --standalone --nproc_per_node="$NPROC" train_pretrain.py \
+    if "$PY" -m torch.distributed.run --standalone --nproc_per_node="$NPROC" "$ROOT/trainer/train_pretrain.py" \
         --data_path "$DATA_PATH" \
         --save_dir "$SAVE_DIR" \
         --checkpoint_dir "$CHECKPOINT_DIR" \
@@ -164,7 +168,6 @@ run_variant() {
         echo "[$(date '+%H:%M:%S')] !!! FAIL $variant after $((elapsed/60))m$((elapsed%60))s" | tee -a "$logfile"
         exit 1
     fi
-    cd "$ROOT"
 }
 
 for variant in "${selected_variants[@]}"; do
@@ -176,9 +179,6 @@ echo "================================================================"
 echo "[small-variants] ALL DONE at $(date '+%F %T')"
 echo "权重产出列表:"
 save_dir_path="$SAVE_DIR"
-if [[ "$save_dir_path" != /* ]]; then
-    save_dir_path="$ROOT/trainer/$save_dir_path"
-fi
 if [[ -n "$WEIGHT_PREFIX" ]]; then
     ls -lh "$save_dir_path"/"${WEIGHT_PREFIX}"_s*_768.pth 2>/dev/null || echo "  (无)"
 else

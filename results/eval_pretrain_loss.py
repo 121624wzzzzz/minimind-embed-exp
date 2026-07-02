@@ -10,19 +10,16 @@ from contextlib import nullcontext
 
 import torch
 import torch.nn.functional as F
-from datasets import load_dataset, load_from_disk
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
+from model.variant_config import VALID_VARIANTS, variant_tie_word_embeddings
+from dataset.lm_dataset import load_pretrain_samples
 from trainer.trainer_utils import get_model_params
 
 warnings.filterwarnings("ignore")
-
-VALID_VARIANTS = [f"s{i}" for i in range(1, 14)]
-UNTIED_VARIANTS = {"s2", "s8", "s9", "s10"}
-
 
 class PretrainEvalDataset(Dataset):
     def __init__(
@@ -70,27 +67,7 @@ class PretrainEvalDataset(Dataset):
             self.samples = samples.select(indices)
 
     def load_samples(self, data_path):
-        if os.path.isdir(data_path) and os.path.exists(os.path.join(data_path, "dataset_info.json")):
-            return load_from_disk(data_path)
-        if os.path.isdir(data_path):
-            parquet_files = sorted(
-                os.path.join(data_path, name)
-                for name in os.listdir(data_path)
-                if name.endswith(".parquet")
-            )
-            jsonl_files = sorted(
-                os.path.join(data_path, name)
-                for name in os.listdir(data_path)
-                if name.endswith(".jsonl")
-            )
-            if parquet_files:
-                return load_dataset("parquet", data_files=parquet_files, split="train")
-            if jsonl_files:
-                return load_dataset("json", data_files=jsonl_files, split="train")
-        suffix = os.path.splitext(data_path)[1].lower()
-        if suffix == ".parquet":
-            return load_dataset("parquet", data_files=data_path, split="train")
-        return load_dataset("json", data_files=data_path, split="train")
+        return load_pretrain_samples(data_path)
 
     def __len__(self):
         return len(self.samples)
@@ -122,10 +99,6 @@ class PretrainEvalDataset(Dataset):
         labels = input_ids.clone()
         labels[input_ids == self.pad_token_id] = -100
         return input_ids, labels
-
-
-def variant_tie_word_embeddings(variant):
-    return variant not in UNTIED_VARIANTS
 
 
 def weight_filename(weight_prefix, variant, hidden_size, suffix):
@@ -274,29 +247,7 @@ def main():
     elif args.tail_ratio > 0:
         if not 0 < args.tail_ratio < 1:
             raise ValueError("--tail_ratio 必须在 (0, 1) 范围内")
-        if os.path.isdir(args.data_path) and os.path.exists(os.path.join(args.data_path, "dataset_info.json")):
-            total_samples = len(load_from_disk(args.data_path))
-        elif os.path.isdir(args.data_path):
-            parquet_files = sorted(
-                os.path.join(args.data_path, name)
-                for name in os.listdir(args.data_path)
-                if name.endswith(".parquet")
-            )
-            jsonl_files = sorted(
-                os.path.join(args.data_path, name)
-                for name in os.listdir(args.data_path)
-                if name.endswith(".jsonl")
-            )
-            if parquet_files:
-                total_samples = len(load_dataset("parquet", data_files=parquet_files, split="train"))
-            elif jsonl_files:
-                total_samples = len(load_dataset("json", data_files=jsonl_files, split="train"))
-            else:
-                raise FileNotFoundError(f"No parquet/jsonl files found in {args.data_path}")
-        elif os.path.splitext(args.data_path)[1].lower() == ".parquet":
-            total_samples = len(load_dataset("parquet", data_files=args.data_path, split="train"))
-        else:
-            total_samples = len(load_dataset("json", data_files=args.data_path, split="train"))
+        total_samples = len(load_pretrain_samples(args.data_path))
         start_index = int(total_samples * (1 - args.tail_ratio))
         if args.max_samples <= 0:
             args.max_samples = total_samples - start_index

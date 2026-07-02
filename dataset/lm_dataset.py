@@ -8,6 +8,28 @@ from pathlib import Path
 from datasets import load_dataset, load_from_disk, Features, Sequence, Value
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+
+def load_pretrain_samples(data_path):
+    data_path = str(data_path)
+    path = Path(data_path)
+    if path.is_dir() and (path / "dataset_info.json").exists() and (path / "state.json").exists():
+        return load_from_disk(str(path))
+
+    suffix = path.suffix.lower()
+    if path.is_dir():
+        parquet_files = sorted(str(p) for p in path.glob("*.parquet"))
+        jsonl_files = sorted(str(p) for p in path.glob("*.jsonl"))
+        if parquet_files:
+            return load_dataset("parquet", data_files=parquet_files, split="train")
+        if jsonl_files:
+            return load_dataset("json", data_files=jsonl_files, split="train")
+    if any(ch in data_path for ch in "*?[]"):
+        format_name = "parquet" if ".parquet" in data_path else "json"
+        return load_dataset(format_name, data_files=data_path, split="train")
+    if suffix == ".parquet":
+        return load_dataset("parquet", data_files=data_path, split="train")
+    return load_dataset("json", data_files=data_path, split="train")
+
 def pre_processing_chat(conversations, add_system_ratio=0.2):
     # tool use 数据完整保留不做处理
     if any(conv.get('tools') for conv in conversations): return conversations
@@ -73,24 +95,7 @@ class PretrainDataset(Dataset):
             raise ValueError("--split_role must be train or eval")
 
     def load_samples(self, data_path):
-        path = Path(data_path)
-        if path.is_dir() and (path / "dataset_info.json").exists() and (path / "state.json").exists():
-            return load_from_disk(str(path))
-
-        suffix = path.suffix.lower()
-        if path.is_dir():
-            parquet_files = sorted(str(p) for p in path.glob("*.parquet"))
-            jsonl_files = sorted(str(p) for p in path.glob("*.jsonl"))
-            if parquet_files:
-                return load_dataset("parquet", data_files=parquet_files, split="train")
-            if jsonl_files:
-                return load_dataset("json", data_files=jsonl_files, split="train")
-        if any(ch in data_path for ch in "*?[]"):
-            format_name = "parquet" if ".parquet" in data_path else "json"
-            return load_dataset(format_name, data_files=data_path, split="train")
-        if suffix == ".parquet":
-            return load_dataset("parquet", data_files=data_path, split="train")
-        return load_dataset("json", data_files=data_path, split="train")
+        return load_pretrain_samples(data_path)
 
     def __len__(self):
         return self.virtual_len if self.virtual_len is not None else len(self.samples)

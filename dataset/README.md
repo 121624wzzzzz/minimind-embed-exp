@@ -34,8 +34,8 @@ dataset/
 GPT-2 历史原始 parquet 当前未保存在仓库磁盘中；若重新获取，约定放在
 `dataset/fineweb_edu/raw/gpt2_sample_10bt/`，不要重新引入 `sample/10BT` 等多层别名。
 
-训练脚本从 `trainer/` 启动时使用 `../dataset/...`，从项目根目录运行的 eval 和 manifest
-记录使用 `dataset/...`。两者指向同一规范目录，不再维护额外兼容软链接。
+训练、eval 和 manifest 工具均以项目根目录为基准解析当前数据路径；实验入口默认传递
+绝对路径，不再依赖从 `trainer/` 启动时的 `../dataset/...` 约定。
 
 GPT-2 packed 数据的原始输入与 cache 历史位置记录在其 `preprocess_meta.json` 中；这些旧
 绝对路径用于溯源，不是当前运行路径。历史 eval CSV/JSON 中的 `data_path` 也保留实验当时

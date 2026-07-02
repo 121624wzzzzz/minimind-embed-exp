@@ -23,8 +23,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-PY="$TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
 if [[ ! -x "$PY" ]]; then
     echo "[qwen3-size-exp] 找不到 torch24 Python: $PY"
     exit 1
@@ -32,9 +32,9 @@ fi
 
 GPUS="${GPUS:-0,1,2,3,4,5,6,7}"
 SEEDS="${SEEDS:-42 123 2026}"
-VARIANTS="${VARIANTS:-s1,s2,s3,s4,s6,s12}"
-DATA_PATH="${DATA_PATH:-../dataset/minimind/pretrain_t2t.jsonl}"
-EVAL_DATA_PATH="${EVAL_DATA_PATH:-dataset/minimind/pretrain_t2t.jsonl}"
+VARIANTS="${VARIANTS:-s1,s12}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/minimind/pretrain_t2t.jsonl}"
+EVAL_DATA_PATH="${EVAL_DATA_PATH:-$DATA_PATH}"
 TOKENIZER_PATH="${TOKENIZER_PATH:-Qwen/Qwen3-0.6B}"
 EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-$TOKENIZER_PATH}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-}"
@@ -43,6 +43,7 @@ TAIL_RATIO="${TAIL_RATIO:-0.01}"
 if [[ -n "$SPLIT_MANIFEST_PATH" ]]; then
     SPLIT_MODE="fixed-random-manifest"
     DEFAULT_WEIGHT_NAMESPACE="minimind-qwen3-0.6b-config-randsplit"
+    TAIL_RATIO=0
 else
     SPLIT_MODE="tail-split"
     DEFAULT_WEIGHT_NAMESPACE="minimind-qwen3-0.6b-config-tail"
@@ -142,6 +143,8 @@ for seed in $SEEDS; do
     echo "  resume dir=$seed_resume_dir"
     echo "----------------------------------------------------------------"
 
+    TORCH24_PREFIX="$TORCH24_PREFIX" \
+    PY="$PY" \
     GPUS="$GPUS" \
     VARIANTS="$VARIANTS" \
     SEED="$seed" \

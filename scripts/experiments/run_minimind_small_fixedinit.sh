@@ -22,8 +22,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-PY="$TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
 if [[ ! -x "$PY" ]]; then
     echo "[fixedinit-small] 找不到 torch24 Python: $PY"
     exit 1
@@ -40,11 +40,11 @@ RESUME_ROOT="${RESUME_ROOT:-$ROOT/weights/resume/$WEIGHT_NAMESPACE}"
 RUN_ID="${RUN_ID:-$(date +%Y%m%d_%H%M%S)}"
 LOG_ROOT="${LOG_ROOT:-$ROOT/logs/minimind-small-fixedinit/$RUN_ID}"
 RUN_LOG="$LOG_ROOT/run.log"
-DATA_PATH="${DATA_PATH:-dataset/minimind/pretrain_t2t.jsonl}"
-TRAIN_DATA_PATH="${TRAIN_DATA_PATH:-../$DATA_PATH}"
-TOKENIZER_PATH="${TOKENIZER_PATH:-../model}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/minimind/pretrain_t2t.jsonl}"
+TRAIN_DATA_PATH="${TRAIN_DATA_PATH:-$DATA_PATH}"
+TOKENIZER_PATH="${TOKENIZER_PATH:-$ROOT/model}"
 EVAL_DATA_PATH="${EVAL_DATA_PATH:-$DATA_PATH}"
-EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-model}"
+EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-$TOKENIZER_PATH}"
 SPLIT_SEED="${SPLIT_SEED:-20260602}"
 EVAL_SPLIT_RATIO="${EVAL_SPLIT_RATIO:-0.01}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-$ROOT/data_splits/minimind_pretrain_t2t_random_eval_${EVAL_SPLIT_RATIO}_seed${SPLIT_SEED}.json}"
@@ -131,6 +131,8 @@ for seed in $SEEDS; do
     echo "  resume dir=$seed_resume_dir"
     echo "----------------------------------------------------------------"
 
+    TORCH24_PREFIX="$TORCH24_PREFIX" \
+    PY="$PY" \
     GPUS="$GPUS" \
     VARIANTS="$VARIANTS" \
     SEED="$seed" \

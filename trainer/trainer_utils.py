@@ -5,6 +5,7 @@ import os
 import sys
 __package__ = "trainer"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 import random
 import math
 import numpy as np
@@ -112,7 +113,13 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         return None
 
 
-def init_model(lm_config, from_weight='pretrain', tokenizer_path='../model', save_dir='../out', device='cuda'):
+def init_model(
+    lm_config,
+    from_weight='pretrain',
+    tokenizer_path=os.path.join(PROJECT_ROOT, 'model'),
+    save_dir=os.path.join(PROJECT_ROOT, 'weights/final'),
+    device='cuda',
+):
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token

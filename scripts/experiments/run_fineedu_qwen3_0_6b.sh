@@ -8,7 +8,7 @@
 #
 # Defaults:
 #   seeds:    42 123 2026
-#   variants: s1,s2,s3,s6,s12
+#   variants: s1,s3,s12
 #
 # Outputs:
 #   weights/final/fineedu-qwen3-0.6b/seed42/s1_1024.pth
@@ -26,8 +26,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-PY="$TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
 if [[ ! -x "$PY" ]]; then
     echo "[fineedu-qwen3] 找不到 torch24 Python: $PY"
     exit 1
@@ -35,16 +35,14 @@ fi
 
 GPUS="${GPUS:-0,1,2,3,4,5,6,7}"
 SEEDS="${SEEDS:-42 123 2026}"
-VARIANTS="${VARIANTS:-s1,s2,s3,s6,s12}"
+VARIANTS="${VARIANTS:-s1,s3,s12}"
 
 # ---- 数据 & 切分 ----
-DATA_PATH="${DATA_PATH:-../dataset/fineweb_edu/packed/qwen3_20b_seq340}"
-EVAL_DATA_PATH="${EVAL_DATA_PATH:-dataset/fineweb_edu/packed/qwen3_20b_seq340}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/fineweb_edu/packed/qwen3_20b_seq340}"
+EVAL_DATA_PATH="${EVAL_DATA_PATH:-$DATA_PATH}"
 TOKENIZER_PATH="${TOKENIZER_PATH:-Qwen/Qwen3-0.6B}"
 EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-$TOKENIZER_PATH}"
-# train script runs from trainer/, need ../ prefix; eval runs from project root
-SPLIT_MANIFEST_TRAIN_PATH="${SPLIT_MANIFEST_TRAIN_PATH:-../data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json}"
-SPLIT_MANIFEST_EVAL_PATH="${SPLIT_MANIFEST_EVAL_PATH:-data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json}"
+SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-$ROOT/data_splits/fineedu_qwen3_20b_random_eval_0.01_seed20260602.json}"
 
 # ---- 命名空间 & 输出路径 ----
 WEIGHT_NAMESPACE="${WEIGHT_NAMESPACE:-fineedu-qwen3-0.6b}"
@@ -87,7 +85,7 @@ RUN_EVAL="${RUN_EVAL:-1}"
 EVAL_MODE="${EVAL_MODE:-shards}"
 EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-80}"
 EVAL_NUM_WORKERS="${EVAL_NUM_WORKERS:-4}"
-TAIL_RATIO="${TAIL_RATIO:-0.01}"
+TAIL_RATIO=0
 
 mkdir -p "$LOG_ROOT"
 exec > >(tee -a "$RUN_LOG") 2>&1
@@ -105,8 +103,7 @@ echo "  RESUME_ROOT        = $RESUME_ROOT"
 echo "  DATA_PATH          = $DATA_PATH"
 echo "  EVAL_DATA_PATH     = $EVAL_DATA_PATH"
 echo "  TOKENIZER_PATH     = $TOKENIZER_PATH"
-echo "  SPLIT_MANIFEST(train) = $SPLIT_MANIFEST_TRAIN_PATH"
-echo "  SPLIT_MANIFEST(eval)  = $SPLIT_MANIFEST_EVAL_PATH"
+echo "  SPLIT_MANIFEST     = $SPLIT_MANIFEST_PATH"
 echo "  HIDDEN_SIZE        = $HIDDEN_SIZE"
 echo "  NUM_HIDDEN_LAYERS  = $NUM_HIDDEN_LAYERS"
 echo "  NUM_ATTENTION_HEADS= $NUM_ATTENTION_HEADS"
@@ -139,6 +136,8 @@ for seed in $SEEDS; do
     echo "  resume dir=$seed_resume_dir"
     echo "----------------------------------------------------------------"
 
+    TORCH24_PREFIX="$TORCH24_PREFIX" \
+    PY="$PY" \
     GPUS="$GPUS" \
     VARIANTS="$VARIANTS" \
     SEED="$seed" \
@@ -148,7 +147,7 @@ for seed in $SEEDS; do
     TOKENIZER_PATH="$TOKENIZER_PATH" \
     SAVE_DIR="$seed_save_dir" \
     CHECKPOINT_DIR="$seed_resume_dir" \
-    SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_TRAIN_PATH" \
+    SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
     HIDDEN_SIZE="$HIDDEN_SIZE" \
     NUM_HIDDEN_LAYERS="$NUM_HIDDEN_LAYERS" \
     NUM_ATTENTION_HEADS="$NUM_ATTENTION_HEADS" \
@@ -188,7 +187,7 @@ for seed in $SEEDS; do
         TOKENIZER_PATH="$EVAL_TOKENIZER_PATH" \
         OUTPUT_DIR="$seed_log_dir" \
         SUMMARY_DIR="$LOG_ROOT" \
-        SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_EVAL_PATH" \
+        SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
         TAIL_RATIO="$TAIL_RATIO" \
         HIDDEN_SIZE="$HIDDEN_SIZE" \
         NUM_HIDDEN_LAYERS="$NUM_HIDDEN_LAYERS" \

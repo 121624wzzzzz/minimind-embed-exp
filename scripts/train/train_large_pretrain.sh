@@ -14,9 +14,10 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-if [[ ! -x "$TORCH24_PREFIX/bin/python" ]]; then
-    echo "[large] 找不到 torch24 Python: $TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
+if [[ ! -x "$PY" ]]; then
+    echo "[large] 找不到 Python: $PY"
     exit 1
 fi
 
@@ -43,9 +44,9 @@ ROPE_THETA="${ROPE_THETA:-1000000}"
 RMS_NORM_EPS="${RMS_NORM_EPS:-1e-6}"
 
 # ---- 训练参数 ----
-DATA_PATH="${DATA_PATH:-../dataset/minimind/pretrain_t2t.jsonl}"
-SAVE_DIR="${SAVE_DIR:-../weights/final}"
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-../weights/resume}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/minimind/pretrain_t2t.jsonl}"
+SAVE_DIR="${SAVE_DIR:-$ROOT/weights/final}"
+CHECKPOINT_DIR="${CHECKPOINT_DIR:-$ROOT/weights/resume}"
 SEED="${SEED:-42}"
 WEIGHT_PREFIX="${WEIGHT_PREFIX-pretrain_large_seed${SEED}}"
 RANK="${RANK:-32}"
@@ -62,7 +63,7 @@ MAX_STEPS="${MAX_STEPS:-0}"
 LM_HEAD_BIAS="${LM_HEAD_BIAS:-1}"
 TRAIN_SPLIT_RATIO="${TRAIN_SPLIT_RATIO:-0.99}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-}"
-TOKENIZER_PATH="${TOKENIZER_PATH:-../model}"
+TOKENIZER_PATH="${TOKENIZER_PATH:-$ROOT/model}"
 GRAD_LOG_INTERVAL="${GRAD_LOG_INTERVAL:-1000}"
 GRAD_SAVE_TENSORS="${GRAD_SAVE_TENSORS:-0}"
 SKIP_COMPLETED="${SKIP_COMPLETED:-1}"
@@ -74,7 +75,7 @@ export CUDA_VISIBLE_DEVICES="$GPUS"
 export PYTHONUNBUFFERED=1
 
 # ---- 核心变体 ----
-all_variants=(s1 s2 s3 s6 s12)
+all_variants=(s1 s2 s3 s4 s6 s12)
 selected_variants=()
 if [[ -n "${VARIANTS:-}" ]]; then
     IFS=',' read -r -a selected_variants <<< "$VARIANTS"
@@ -125,6 +126,7 @@ run_variant() {
         save_weight="${WEIGHT_PREFIX}_${variant}"
     fi
     local logfile="$LOG_DIR/${variant}.log"
+    local final_weight="$SAVE_DIR/${save_weight}_${HIDDEN_SIZE}.pth"
     local started=$(date +%s)
 
     echo
@@ -134,13 +136,15 @@ run_variant() {
     echo "  log: $logfile"
     echo "----------------------------------------------------------------"
 
-    if [[ "$SKIP_COMPLETED" == "1" ]] && grep -q "<<< DONE $variant" "$logfile" 2>/dev/null; then
-        echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
-        return 0
+    if [[ "$SKIP_COMPLETED" == "1" && -f "$final_weight" ]]; then
+        if grep -Eq "<<< (DONE|FINISH) $variant" "$logfile" 2>/dev/null || \
+            tail -n 20 "$logfile" 2>/dev/null | grep -Pq "Epoch:\[$EPOCHS/$EPOCHS\]\(([0-9]+)/\1\)"; then
+            echo "[$(date '+%H:%M:%S')] --- SKIP completed variant: $variant"
+            return 0
+        fi
     fi
 
-    cd "$ROOT/trainer"
-    torchrun --standalone --nproc_per_node="$NPROC" train_pretrain.py \
+    if "$PY" -m torch.distributed.run --standalone --nproc_per_node="$NPROC" "$ROOT/trainer/train_pretrain.py" \
         --hidden_size "$HIDDEN_SIZE" \
         --num_hidden_layers "$NUM_HIDDEN_LAYERS" \
         --num_attention_heads "$NUM_ATTENTION_HEADS" \
@@ -175,11 +179,14 @@ run_variant() {
         --num_workers "$NUM_WORKERS" \
         --from_resume "$FROM_RESUME" \
         --max_steps "$MAX_STEPS" \
-        2>&1 | tee "$logfile"
-
-    local elapsed=$(( $(date +%s) - started ))
-    echo "[$(date '+%H:%M:%S')] <<< DONE $variant in $((elapsed/60))m$((elapsed%60))s"
-    cd "$ROOT"
+        2>&1 | tee "$logfile"; then
+        local elapsed=$(( $(date +%s) - started ))
+        echo "[$(date '+%H:%M:%S')] <<< FINISH $variant in $((elapsed/60))m$((elapsed%60))s" | tee -a "$logfile"
+    else
+        local elapsed=$(( $(date +%s) - started ))
+        echo "[$(date '+%H:%M:%S')] !!! FAIL $variant after $((elapsed/60))m$((elapsed%60))s" | tee -a "$logfile"
+        exit 1
+    fi
 }
 
 for variant in "${selected_variants[@]}"; do
@@ -191,9 +198,6 @@ echo "================================================================"
 echo "[large] ALL DONE at $(date '+%F %T')"
 echo "权重产出:"
 save_dir_path="$SAVE_DIR"
-if [[ "$save_dir_path" != /* ]]; then
-    save_dir_path="$ROOT/trainer/$save_dir_path"
-fi
 if [[ -n "$WEIGHT_PREFIX" ]]; then
     ls -lh "$save_dir_path"/"${WEIGHT_PREFIX}"_s*_"${HIDDEN_SIZE}".pth 2>/dev/null || echo "  (无)"
 else

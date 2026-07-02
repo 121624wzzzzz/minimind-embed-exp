@@ -13,6 +13,9 @@
 
 历史维护脚本已经移除，不再保留 backfill 和 large 训练自动重启脚本。
 
+脚本默认使用 `/home/wz/anaconda3/envs/torch24`，换环境时通过 `TORCH24_PREFIX` 或 `PY`
+覆盖。训练和 eval 都使用 `PY` 指向的解释器，不要求从特定工作目录启动。
+
 ## 实验入口
 
 `experiments/run_minimind_small_fixedinit.sh`
@@ -52,7 +55,7 @@ logs/minimind-small-fixedinit/<run_id>/seed42/eval_pretrain_loss.csv
 
 MiniMind large 实验入口。默认 hidden=1024、layers=16，跑核心变体 `s1,s2,s3,s4,s6,s12`。
 
-默认不传 `SPLIT_MANIFEST_PATH` 时使用旧版兼容切分：训练前 99%，eval 后 1%，并自动保存到 `WEIGHT_NAMESPACE=minimind-large-tail`。如果传入 `SPLIT_MANIFEST_PATH`，则使用固定随机 manifest split，并自动保存到 `WEIGHT_NAMESPACE=minimind-large-randsplit`。
+默认不传 `SPLIT_MANIFEST_PATH` 时使用历史 tail 切分：训练前 99%，eval 后 1%，并保存到 `WEIGHT_NAMESPACE=minimind-large`。如果传入 `SPLIT_MANIFEST_PATH`，则使用固定随机 manifest split，并保存到 `WEIGHT_NAMESPACE=minimind-large-randsplit`。
 
 ```bash
 bash scripts/experiments/run_minimind_large.sh
@@ -63,8 +66,8 @@ RUN_EVAL=0 MAX_STEPS=10 BATCH_SIZE=48 bash scripts/experiments/run_minimind_larg
 默认输出：
 
 ```text
-weights/final/minimind-large-tail/seed42/s1_1024.pth
-weights/resume/minimind-large-tail/seed42/s1_1024_resume.pth
+weights/final/minimind-large/seed42/s1_1024.pth
+weights/resume/minimind-large/seed42/s1_1024_resume.pth
 logs/minimind-large/<run_id>/seed42/s1.log
 logs/minimind-large/<run_id>/seed42/eval_pretrain_loss.csv
 ```
@@ -76,23 +79,33 @@ weights/final/minimind-large-randsplit/seed42/s1_1024.pth
 weights/resume/minimind-large-randsplit/seed42/s1_1024_resume.pth
 ```
 
-`experiments/run_fineedu_gpt2.sh`
+`experiments/run_fineedu_gpt2_tail.sh`
 
-FineEdu packed 数据 + GPT-2 tokenizer 实验入口。默认跑 `s1,s2,s3,s6,s12`，训练后自动 eval。
+FineEdu packed 数据 + GPT-2 tokenizer 的历史 tail-split 实验入口。默认跑正式实验使用的十个变体，训练后通过通用并行 eval 脚本评测尾部 1%。
 
 ```bash
-bash scripts/experiments/run_fineedu_gpt2.sh
-SEEDS="42" VARIANTS=s1,s3,s12 bash scripts/experiments/run_fineedu_gpt2.sh
-RUN_EVAL=0 MAX_STEPS=5 bash scripts/experiments/run_fineedu_gpt2.sh
+bash scripts/experiments/run_fineedu_gpt2_tail.sh
+SEEDS="42" VARIANTS=s1,s3,s12 bash scripts/experiments/run_fineedu_gpt2_tail.sh
+RUN_EVAL=0 MAX_STEPS=5 bash scripts/experiments/run_fineedu_gpt2_tail.sh
 ```
 
 默认输出：
 
 ```text
-weights/final/fineedu-gpt2/seed42/s1_768.pth
-weights/resume/fineedu-gpt2/seed42/s1_768_resume.pth
-logs/fineedu-gpt2/<run_id>/seed42/s1.log
-logs/fineedu-gpt2/<run_id>/seed42/eval_pretrain_loss.csv
+weights/final/fineedu-gpt2-tail/seed42/s1_768.pth
+weights/resume/fineedu-gpt2-tail/seed42/s1_768_resume.pth
+logs/fineedu-gpt2-tail/<run_id>/seed42/s1.log
+logs/fineedu-gpt2-tail/<run_id>/seed42/eval_pretrain_loss.csv
+```
+
+`experiments/run_fineedu_gpt2_randsplit_6b.sh`
+
+FineEdu GPT-2 6B 的正式 fixed-random 1% 实验入口。默认运行相同十个变体和三个 seed，使用固定 manifest，并将结果保存到 `fineedu-gpt2-randsplit-6b` namespace。
+
+```bash
+bash scripts/experiments/run_fineedu_gpt2_randsplit_6b.sh
+SEEDS="42" VARIANTS=s1,s3,s12 bash scripts/experiments/run_fineedu_gpt2_randsplit_6b.sh
+RUN_EVAL=0 MAX_STEPS=5 bash scripts/experiments/run_fineedu_gpt2_randsplit_6b.sh
 ```
 
 `experiments/run_minimind_qwen3_0_6b_config.sh`
@@ -112,6 +125,7 @@ MiniMind 数据上的 Qwen3-0.6B 尺寸配置入口。这个入口对齐 Qwen/Qw
 | `RMS_NORM_EPS` | `1e-6` |
 | `LM_HEAD_BIAS` | `0` |
 | `TOKENIZER_PATH` | `Qwen/Qwen3-0.6B` |
+| `VARIANTS` | `s1,s12` |
 
 默认不传 `SPLIT_MANIFEST_PATH` 时使用旧版兼容切分，并自动保存到 `WEIGHT_NAMESPACE=minimind-qwen3-0.6b-config-tail`。传入 `SPLIT_MANIFEST_PATH` 时使用固定随机 manifest split，并自动保存到 `WEIGHT_NAMESPACE=minimind-qwen3-0.6b-config-randsplit`。
 
@@ -133,7 +147,16 @@ logs/minimind-qwen3-0.6b-config/<run_id>/seed42/eval_pretrain_loss.csv
 如果需要只对齐结构但继续使用 MiniMind tokenizer，可以显式覆盖：
 
 ```bash
-TOKENIZER_PATH=../model EVAL_TOKENIZER_PATH=model bash scripts/experiments/run_minimind_qwen3_0_6b_config.sh
+TOKENIZER_PATH="$PWD/model" bash scripts/experiments/run_minimind_qwen3_0_6b_config.sh
+```
+
+`experiments/run_fineedu_qwen3_0_6b.sh`
+
+FineEdu 20B、Qwen3 tokenizer 与 Qwen3-0.6B 配置的主实验入口。固定使用 random 1% manifest，默认运行 `s1,s3,s12`，eval 使用八卡 shards 模式。
+
+```bash
+bash scripts/experiments/run_fineedu_qwen3_0_6b.sh
+SEEDS="42" RUN_EVAL=0 bash scripts/experiments/run_fineedu_qwen3_0_6b.sh
 ```
 
 ## 训练脚本
@@ -150,7 +173,7 @@ START=s4 END=s13 bash scripts/train/train_minimind_small_variants.sh
 
 `train/train_large_pretrain.sh`
 
-MiniMind large / Qwen3-size dense 配置共用的训练脚本。默认 hidden=1024、layers=16，核心变体为 `s1,s2,s3,s6,s12`；也支持由 experiment 入口传入 attention heads、FFN 中间层、RoPE 等结构参数。
+MiniMind large / Qwen3-size dense 配置共用的训练脚本。默认 hidden=1024、layers=16，核心变体为 `s1,s2,s3,s4,s6,s12`；也支持由 experiment 入口传入 attention heads、FFN 中间层、RoPE 等结构参数。
 
 ```bash
 bash scripts/train/train_large_pretrain.sh
@@ -160,12 +183,12 @@ MAX_STEPS=10 BATCH_SIZE=48 bash scripts/train/train_large_pretrain.sh
 
 `train/train_fineedu_gpt2_pretrain.sh`
 
-FineWeb-Edu packed 数据 + GPT-2 tokenizer 的训练脚本。默认跑 `s1,s2,s3,s6,s12`，训练后自动 eval。
+FineWeb-Edu packed 数据 + GPT-2 tokenizer 的纯训练执行脚本。默认跑两组 GPT-2 实验共同使用的十个变体；eval 由 experiments 层统一调用。
 
 ```bash
 bash scripts/train/train_fineedu_gpt2_pretrain.sh
-RUN_EVAL=0 VARIANTS=s1,s3 bash scripts/train/train_fineedu_gpt2_pretrain.sh
-MAX_STEPS=5 DATA_PATH=../dataset/fineweb_edu/smoke bash scripts/train/train_fineedu_gpt2_pretrain.sh
+VARIANTS=s1,s3 bash scripts/train/train_fineedu_gpt2_pretrain.sh
+MAX_STEPS=5 DATA_PATH=dataset/fineweb_edu/smoke bash scripts/train/train_fineedu_gpt2_pretrain.sh
 ```
 
 ## Eval 脚本
@@ -181,11 +204,11 @@ MAX_STEPS=5 DATA_PATH=../dataset/fineweb_edu/smoke bash scripts/train/train_fine
 - `EVAL_MODE=shards`：所有 GPU 对同一 variant 做数据分片，适合 FineEdu 大规模 eval 集。
 
 ```bash
-PY=/home/wz/anaconda3/envs/torch24/bin/python \
+PY=python \
 GPU_LIST=0,1,2,3,4,5,6,7 \
 EVAL_MODE=variants \
 VARIANTS=s1,s3,s12 \
-SAVE_DIR=weights/final/minimind-large-tail/seed42 \
+SAVE_DIR=weights/final/minimind-large/seed42 \
 DATA_PATH=dataset/minimind/pretrain_t2t.jsonl \
 TOKENIZER_PATH=model \
 OUTPUT_DIR=logs/manual-eval/seed42 \
@@ -209,7 +232,7 @@ seq len `340`，并按顺序保留前 6B token。将同一组原始 parquet 放�
 可以先在临时目录复现并校验：
 
 ```bash
-/home/wz/anaconda3/envs/torch24/bin/python dataset/prepare_fineweb_edu_pretrain.py \
+python dataset/prepare_fineweb_edu_pretrain.py \
   --input-dir dataset/fineweb_edu/raw/gpt2_sample_10bt \
   --input-format parquet \
   --output-dir /tmp/fineedu_gpt2_6b_rebuild \
@@ -232,7 +255,7 @@ cache prefix 为 `cache-edfc1356ffbd6c6a`。恢复过程按原 shard 顺序截�
 生成固定随机 eval indices manifest。训练使用 manifest 的补集，eval 使用 manifest 中的 eval indices。
 
 ```bash
-/home/wz/anaconda3/envs/torch24/bin/python scripts/data/create_split_manifest.py \
+python scripts/data/create_split_manifest.py \
   --data_path dataset/minimind/pretrain_t2t.jsonl \
   --output data_splits/minimind_pretrain_t2t_random_eval_0.01_seed20260602.json \
   --eval_ratio 0.01 \

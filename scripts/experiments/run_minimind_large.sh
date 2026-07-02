@@ -7,8 +7,8 @@
 #   variants: s1,s2,s3,s4,s6,s12
 #
 # Outputs:
-#   weights/final/minimind-large-tail/seed42/s1_1024.pth
-#   weights/resume/minimind-large-tail/seed42/s1_1024_resume.pth
+#   weights/final/minimind-large/seed42/s1_1024.pth
+#   weights/resume/minimind-large/seed42/s1_1024_resume.pth
 #   logs/minimind-large/<run_id>/seed42/s1.log
 #
 # Examples:
@@ -22,8 +22,8 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
 cd "$ROOT"
 
-TORCH24_PREFIX="/home/wz/anaconda3/envs/torch24"
-PY="$TORCH24_PREFIX/bin/python"
+TORCH24_PREFIX="${TORCH24_PREFIX:-/home/wz/anaconda3/envs/torch24}"
+PY="${PY:-$TORCH24_PREFIX/bin/python}"
 if [[ ! -x "$PY" ]]; then
     echo "[large-exp] 找不到 torch24 Python: $PY"
     exit 1
@@ -32,19 +32,20 @@ fi
 GPUS="${GPUS:-0,1,2,3,4,5,6,7}"
 SEEDS="${SEEDS:-42 123 2026}"
 VARIANTS="${VARIANTS:-s1,s2,s3,s4,s6,s12}"
-DATA_PATH="${DATA_PATH:-../dataset/minimind/pretrain_t2t.jsonl}"
-EVAL_DATA_PATH="${EVAL_DATA_PATH:-dataset/minimind/pretrain_t2t.jsonl}"
-TOKENIZER_PATH="${TOKENIZER_PATH:-../model}"
-EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-model}"
+DATA_PATH="${DATA_PATH:-$ROOT/dataset/minimind/pretrain_t2t.jsonl}"
+EVAL_DATA_PATH="${EVAL_DATA_PATH:-$DATA_PATH}"
+TOKENIZER_PATH="${TOKENIZER_PATH:-$ROOT/model}"
+EVAL_TOKENIZER_PATH="${EVAL_TOKENIZER_PATH:-$TOKENIZER_PATH}"
 SPLIT_MANIFEST_PATH="${SPLIT_MANIFEST_PATH:-}"
 TAIL_RATIO="${TAIL_RATIO:-0.01}"
 
 if [[ -n "$SPLIT_MANIFEST_PATH" ]]; then
     SPLIT_MODE="fixed-random-manifest"
     DEFAULT_WEIGHT_NAMESPACE="minimind-large-randsplit"
+    TAIL_RATIO=0
 else
     SPLIT_MODE="tail-split"
-    DEFAULT_WEIGHT_NAMESPACE="minimind-large-tail"
+    DEFAULT_WEIGHT_NAMESPACE="minimind-large"
 fi
 
 if [[ -z "${WEIGHT_NAMESPACE+x}" || -z "$WEIGHT_NAMESPACE" ]]; then
@@ -137,6 +138,8 @@ for seed in $SEEDS; do
     echo "  resume dir=$seed_resume_dir"
     echo "----------------------------------------------------------------"
 
+    TORCH24_PREFIX="$TORCH24_PREFIX" \
+    PY="$PY" \
     GPUS="$GPUS" \
     VARIANTS="$VARIANTS" \
     SEED="$seed" \
