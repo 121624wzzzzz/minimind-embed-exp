@@ -31,7 +31,8 @@ BASELINE_CSV="${BASELINE_CSV:-$ROOT/docs/eval_results/minimind-small-fixedinit-r
 FINAL_ROOT="${FINAL_ROOT:-$ROOT/weights/final/minimind-small-dynamic-centering-randsplit/seed${SEED}}"
 RESUME_ROOT="${RESUME_ROOT:-$ROOT/weights/resume/minimind-small-dynamic-centering-randsplit/seed${SEED}}"
 LOG_ROOT="${LOG_ROOT:-$ROOT/logs/dynamic-centering/$RUN_ID}"
-RESULT_ROOT="${RESULT_ROOT:-$SCRIPT_DIR/results/$RUN_ID}"
+RESULT_ROOT="${RESULT_ROOT:-$SCRIPT_DIR/results/minimind-small-fixedinit-randsplit}"
+SEED_RESULT_DIR="${SEED_RESULT_DIR:-$RESULT_ROOT/seed${SEED}}"
 
 BATCH_SIZE="${BATCH_SIZE:-224}"
 ACCUMULATION_STEPS="${ACCUMULATION_STEPS:-1}"
@@ -57,7 +58,7 @@ if [[ -f "$FINAL_WEIGHT" && "$FROM_RESUME" != "1" && "$OVERWRITE" != "1" ]]; the
     exit 1
 fi
 
-mkdir -p "$FINAL_ROOT" "$RESUME_ROOT" "$LOG_ROOT" "$RESULT_ROOT"
+mkdir -p "$FINAL_ROOT" "$RESUME_ROOT" "$LOG_ROOT" "$SEED_RESULT_DIR"
 exec > >(tee -a "$LOG_ROOT/run.log") 2>&1
 
 echo "================================================================"
@@ -79,11 +80,12 @@ echo "  FINAL_ROOT         = $FINAL_ROOT"
 echo "  RESUME_ROOT        = $RESUME_ROOT"
 echo "  LOG_ROOT           = $LOG_ROOT"
 echo "  RESULT_ROOT        = $RESULT_ROOT"
+echo "  SEED_RESULT_DIR    = $SEED_RESULT_DIR"
 echo "================================================================"
 sha256sum "$SPLIT_MANIFEST_PATH"
 
 "$PY" "$SCRIPT_DIR/verify_implementation.py" \
-    --output "$RESULT_ROOT/implementation_checks.json"
+    --output "$SEED_RESULT_DIR/implementation_checks.json"
 
 export CUDA_VISIBLE_DEVICES="$GPUS"
 "$PY" -m torch.distributed.run --standalone --nproc_per_node="$NPROC" \
@@ -129,7 +131,7 @@ if [[ "$RUN_EVAL" == "1" ]]; then
     SAVE_DIR="$FINAL_ROOT" \
     DATA_PATH="$DATA_PATH" \
     TOKENIZER_PATH="$TOKENIZER_PATH" \
-    OUTPUT_DIR="$RESULT_ROOT/seed${SEED}" \
+    OUTPUT_DIR="$SEED_RESULT_DIR" \
     SPLIT_MANIFEST_PATH="$SPLIT_MANIFEST_PATH" \
     HIDDEN_SIZE=768 \
     NUM_HIDDEN_LAYERS=8 \
@@ -145,17 +147,17 @@ if [[ "$RUN_EVAL" == "1" ]]; then
     bash "$ROOT/scripts/eval/eval_parallel.sh"
 
     # 通用 evaluator 按 CSV 默认写入 CRLF；正式归档统一为仓库使用的 LF。
-    sed -i 's/\r$//' "$RESULT_ROOT/seed${SEED}/eval_pretrain_loss.csv"
+    sed -i 's/\r$//' "$SEED_RESULT_DIR/eval_pretrain_loss.csv"
 
     "$PY" "$SCRIPT_DIR/summarize_results.py" \
         --baseline_csv "$BASELINE_CSV" \
-        --center_json "$RESULT_ROOT/seed${SEED}/eval_pretrain_loss.json" \
-        --output_csv "$RESULT_ROOT/comparison_seed${SEED}.csv" \
-        --output_json "$RESULT_ROOT/comparison_seed${SEED}.json"
+        --center_json "$SEED_RESULT_DIR/eval_pretrain_loss.json" \
+        --output_csv "$SEED_RESULT_DIR/comparison.csv" \
+        --output_json "$SEED_RESULT_DIR/comparison.json"
 fi
 
 echo "================================================================"
 echo "[dynamic-centering] done at $(date '+%F %T')"
 echo "  final_weight=$FINAL_WEIGHT"
-echo "  result_root=$RESULT_ROOT"
+echo "  seed_result_dir=$SEED_RESULT_DIR"
 echo "================================================================"

@@ -13,9 +13,5 @@ dynamic centering 在 seed2026 上同时优于 S1 和 S3。按 S3 相对 S1 的�
 恢复比例为 139.46%；该比例大于 100% 表示 dynamic centering 本 seed 超过了 S3，不代表可
 跨 seed 直接外推。
 
-本次训练中途出现了不属于本实验的外部 GPU 进程，与本实验共享 8 张卡的 SM，因此墙钟时间
-明显增加。训练未中断，seed、数据顺序、batch、optimizer steps、学习率、checkpoint 和数值
-均保持原配置；外部负载只影响耗时，不改变实验口径。
-
 最终权重：
 `weights/final/minimind-small-dynamic-centering-randsplit/seed2026/center_dynamic_768.pth`。

@@ -48,8 +48,8 @@ steps、初始学习率 `5e-4`、BF16 autocast。峰值 allocated 显存为 35.9
 
 ## 文件
 
-- `comparison_seed42.csv/json`：S1、dynamic centering、S3 统一对比；
-- `seed42/eval_pretrain_loss.csv/json`：新变体的原始完整评测；
+- `comparison.csv/json`：S1、dynamic centering、S3 统一对比；
+- `eval_pretrain_loss.csv/json`：新变体的原始完整评测；
 - `implementation_checks.json`：自动化实现约束检查；
 - `run_metadata.json`：训练、数据、权重哈希与关键数值。
 

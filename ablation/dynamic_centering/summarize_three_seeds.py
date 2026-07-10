@@ -118,7 +118,7 @@ def main():
         per_seed_rows,
     )
     write_csv(
-        os.path.join(args.output_dir, "three_seed_summary.csv"),
+        os.path.join(args.output_dir, "eval_summary.csv"),
         ["variant", "seed42_loss", "seed123_loss", "seed2026_loss", "mean_loss", "std_loss", "mean_ppl", "mean_delta_vs_s1"],
         summary_rows,
     )
@@ -127,7 +127,7 @@ def main():
         ["seed", "s1_loss", "center_dynamic_loss", "s3_loss", "s3_gain_vs_s1", "center_gain_vs_s1", "fraction_of_s3_gain_recovered"],
         mechanism_rows,
     )
-    with open(os.path.join(args.output_dir, "three_seed_summary.json"), "w", encoding="utf-8") as handle:
+    with open(os.path.join(args.output_dir, "eval_summary.json"), "w", encoding="utf-8") as handle:
         json.dump(
             {"summary": summary_rows, "mechanism_by_seed": mechanism_rows, "aggregate": aggregate},
             handle,

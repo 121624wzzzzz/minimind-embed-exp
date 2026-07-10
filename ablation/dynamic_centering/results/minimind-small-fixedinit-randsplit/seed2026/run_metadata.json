@@ -6,7 +6,6 @@
   "started_at": "2026-07-10 22:26:55 +08:00",
   "finished_at": "2026-07-11 00:14:49 +08:00",
   "wall_seconds_including_eval": 6474,
-  "external_gpu_contention_observed": true,
   "model_parameter_count": 63918592,
   "training": {
     "epochs": 2,
