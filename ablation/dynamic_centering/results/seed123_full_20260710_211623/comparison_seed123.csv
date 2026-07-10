@@ -1,0 +1,4 @@
+variant,source,loss,ppl,delta_vs_s1,delta_vs_s3,tokens,sequences
+s1,existing_same_seed_baseline,1.738371,5.688070,+0.000000,+0.011750,17625568,84688
+center_dynamic,new_ablation,1.734176,5.664259,-0.004195,+0.007555,17625568,84688
+s3,existing_same_seed_baseline,1.726621,5.621626,-0.011750,+0.000000,17625568,84688

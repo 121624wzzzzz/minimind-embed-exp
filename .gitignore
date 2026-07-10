@@ -29,3 +29,14 @@ dataset/*
 !dataset/lm_dataset.py
 !dataset/download_jsonl.py
 !dataset/prepare_fineweb_edu_pretrain.py
+
+# Local SFT dataset snapshots.
+sft/**/*.parquet
+sft/**/.cache/
+sft/**/.msc
+sft/**/.mv
+sft/logs/
+sft/weights/
+sft/runs/
+sft/.hf_home/
+sft/.hf_datasets_cache/

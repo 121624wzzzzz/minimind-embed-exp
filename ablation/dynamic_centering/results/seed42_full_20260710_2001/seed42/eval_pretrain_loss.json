@@ -1,0 +1,15 @@
+[
+  {
+    "variant": "center_dynamic",
+    "loss": "1.734228",
+    "ppl": "5.664553",
+    "delta_vs_s1": "",
+    "delta_vs_s2": "",
+    "tokens": 17625568,
+    "sequences": 84688,
+    "seconds": "8.34",
+    "data_path": "/commondocument/wz/cross_encoder_workspace/im_exp/minimind/dataset/minimind/pretrain_t2t.jsonl",
+    "start_index": 0,
+    "max_samples": 84688
+  }
+]

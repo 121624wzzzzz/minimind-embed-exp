@@ -30,7 +30,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 def normalize_variant_args(args):
     args.embedding_variant = args.embedding_variant.lower()
     if args.embedding_variant not in VALID_VARIANTS:
-        raise ValueError(f"--embedding_variant 必须是 s1-s13，当前为 {args.embedding_variant}")
+        raise ValueError(f"未知 --embedding_variant：{args.embedding_variant}")
     if args.embedding_variant_rank <= 0:
         raise ValueError("--embedding_variant_rank 必须为正整数")
     required_tie = int(variant_tie_word_embeddings(args.embedding_variant))
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
     parser.add_argument('--tie_word_embeddings', default=1, type=int, choices=[0, 1], help="是否绑定embed_tokens与lm_head（0=untied，参数+vocab_size*hidden_size）")
     parser.add_argument('--lm_head_bias', default=1, type=int, choices=[0, 1], help="lm_head是否使用vocab维度bias")
-    parser.add_argument('--embedding_variant', default='s1', type=str, choices=sorted(VALID_VARIANTS), help="S1-S13 embedding/head 变体")
+    parser.add_argument('--embedding_variant', default='s1', type=str, choices=sorted(VALID_VARIANTS), help="embedding/head 变体")
     parser.add_argument('--embedding_variant_rank', default=32, type=int, help="S4/S5/S6/S7/S9/S10/S12/S13 低秩rank")
     parser.add_argument("--data_path", type=str, default=os.path.join(PROJECT_ROOT, "dataset/minimind/pretrain_t2t.jsonl"), help="预训练数据路径")
     parser.add_argument("--train_split_ratio", default=1.0, type=float, help="使用数据前多少比例训练，1.0表示全量")

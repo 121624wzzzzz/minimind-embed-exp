@@ -1,0 +1,39 @@
+{
+  "run_id": "seed123_full_20260710_211623",
+  "status": "complete",
+  "variant": "center_dynamic",
+  "seed": 123,
+  "started_at": "2026-07-10 21:16:23 +08:00",
+  "finished_at": "2026-07-10 22:26:55 +08:00",
+  "wall_seconds_including_eval": 4232,
+  "model_parameter_count": 63918592,
+  "training": {
+    "epochs": 2,
+    "steps_per_epoch": 4679,
+    "total_steps": 9358,
+    "batch_size_per_gpu": 224,
+    "world_size": 8,
+    "max_seq_len": 340,
+    "learning_rate": 0.0005,
+    "dtype": "bfloat16"
+  },
+  "data": {
+    "train_samples": 8384139,
+    "eval_sequences": 84688,
+    "eval_tokens": 17625568,
+    "split_manifest_sha256": "7e52827de2e0fdc3058a67a45f32f74fb125ba00e17c24a7cb14efdf8f5d2a79"
+  },
+  "checkpoint": {
+    "path": "weights/final/minimind-small-dynamic-centering-randsplit/seed123/center_dynamic_768.pth",
+    "bytes": 137698082,
+    "sha256": "981829b95f3aa51389dcffe27a866abf5b269c4d349891dfc303f532d89bf300"
+  },
+  "metrics": {
+    "s1_loss": 1.738371,
+    "center_dynamic_loss": 1.734176,
+    "s3_loss": 1.726621,
+    "center_dynamic_delta_vs_s1": -0.004195,
+    "center_dynamic_delta_vs_s3": 0.007555,
+    "fraction_of_s3_gain_recovered": 0.3570212765957325
+  }
+}

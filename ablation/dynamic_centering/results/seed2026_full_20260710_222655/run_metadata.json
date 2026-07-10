@@ -1,0 +1,40 @@
+{
+  "run_id": "seed2026_full_20260710_222655",
+  "status": "complete",
+  "variant": "center_dynamic",
+  "seed": 2026,
+  "started_at": "2026-07-10 22:26:55 +08:00",
+  "finished_at": "2026-07-11 00:14:49 +08:00",
+  "wall_seconds_including_eval": 6474,
+  "external_gpu_contention_observed": true,
+  "model_parameter_count": 63918592,
+  "training": {
+    "epochs": 2,
+    "steps_per_epoch": 4679,
+    "total_steps": 9358,
+    "batch_size_per_gpu": 224,
+    "world_size": 8,
+    "max_seq_len": 340,
+    "learning_rate": 0.0005,
+    "dtype": "bfloat16"
+  },
+  "data": {
+    "train_samples": 8384139,
+    "eval_sequences": 84688,
+    "eval_tokens": 17625568,
+    "split_manifest_sha256": "7e52827de2e0fdc3058a67a45f32f74fb125ba00e17c24a7cb14efdf8f5d2a79"
+  },
+  "checkpoint": {
+    "path": "weights/final/minimind-small-dynamic-centering-randsplit/seed2026/center_dynamic_768.pth",
+    "bytes": 137698082,
+    "sha256": "da9ca7051d1dd9903a5d58b1b3d6bc778c71ebd45e52ca45616c38ff502155f6"
+  },
+  "metrics": {
+    "s1_loss": 1.734557,
+    "center_dynamic_loss": 1.731871,
+    "s3_loss": 1.732631,
+    "center_dynamic_delta_vs_s1": -0.002686,
+    "center_dynamic_delta_vs_s3": -0.000760,
+    "fraction_of_s3_gain_recovered": 1.3946002076844126
+  }
+}

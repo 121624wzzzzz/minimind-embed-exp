@@ -234,6 +234,11 @@ class MiniMindModel(nn.Module):
 
     def _embed(self, input_ids):
         embeddings = self.embed_tokens(input_ids)
+        if self.embedding_variant == "center_dynamic":
+            # 对当前共享 embedding 表的全部词表行求均值。float()/to() 均保留
+            # autograd；这里不能 detach，也不排除 special/pad token。
+            embedding_mean = self.embed_tokens.weight.float().mean(dim=0).to(embeddings.dtype)
+            return embeddings - embedding_mean
         if self.embedding_variant == "s12":
             return embeddings - self.embedding_beta + self.embedding_mul_b(self.embedding_mul_a(embeddings))
         if self.embedding_variant == "s13":

@@ -1,0 +1,2 @@
+variant,loss,ppl,delta_vs_s1,delta_vs_s2,tokens,sequences,seconds,data_path,start_index,max_samples
+center_dynamic,1.734176,5.664256,,,17625568,84688,8.52,/commondocument/wz/cross_encoder_workspace/im_exp/minimind/dataset/minimind/pretrain_t2t.jsonl,0,84688

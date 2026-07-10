@@ -1,0 +1,53 @@
+{
+  "run_id": "seed42_full_20260710_2001",
+  "status": "complete",
+  "variant": "center_dynamic",
+  "seed": 42,
+  "started_at": "2026-07-10 20:01:01 +08:00",
+  "finished_at": "2026-07-10 21:10:26 +08:00",
+  "wall_seconds_including_eval": 4165,
+  "model": {
+    "hidden_size": 768,
+    "num_hidden_layers": 8,
+    "num_attention_heads": 8,
+    "num_key_value_heads": 4,
+    "parameter_count": 63918592,
+    "tie_word_embeddings": true,
+    "lm_head_bias": true
+  },
+  "training": {
+    "epochs": 2,
+    "steps_per_epoch": 4679,
+    "total_steps": 9358,
+    "batch_size_per_gpu": 224,
+    "world_size": 8,
+    "gradient_accumulation_steps": 1,
+    "effective_batch_sequences": 1792,
+    "max_seq_len": 340,
+    "learning_rate": 0.0005,
+    "dtype": "bfloat16",
+    "train_samples": 8384139,
+    "peak_allocated_gib_per_gpu": 35.93
+  },
+  "data": {
+    "path": "dataset/minimind/pretrain_t2t.jsonl",
+    "split_manifest": "data_splits/minimind_pretrain_t2t_random_eval_0.01_seed20260602.json",
+    "split_manifest_sha256": "7e52827de2e0fdc3058a67a45f32f74fb125ba00e17c24a7cb14efdf8f5d2a79",
+    "eval_sequences": 84688,
+    "eval_tokens": 17625568
+  },
+  "checkpoint": {
+    "path": "weights/final/minimind-small-dynamic-centering-randsplit/seed42/center_dynamic_768.pth",
+    "bytes": 137698082,
+    "sha256": "688fcff43da63c6fcb7c5588871ca8f57b425def46573c3c17a1a36899e35313"
+  },
+  "metrics": {
+    "s1_loss": 1.741829,
+    "center_dynamic_loss": 1.734228,
+    "s3_loss": 1.732819,
+    "center_dynamic_delta_vs_s1": -0.007601,
+    "center_dynamic_delta_vs_s3": 0.001409,
+    "fraction_of_s3_gain_recovered": 0.8436182019977803
+  },
+  "baseline_source": "docs/eval_results/minimind-small-fixedinit-randsplit/seed42/eval_pretrain_loss.csv"
+}

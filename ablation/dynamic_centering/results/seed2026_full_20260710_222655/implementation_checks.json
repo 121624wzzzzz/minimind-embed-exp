@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": {
+    "variant_registered": true,
+    "tie_word_embeddings": true,
+    "shared_weight_storage": true,
+    "state_keys_equal_to_s1": true,
+    "initialization_equal_to_s1": true,
+    "parameter_count_equal_to_s1": true,
+    "embedding_formula_equal": true,
+    "logits_path_unchanged": true,
+    "unused_row_receives_mean_gradient": true,
+    "all_vocab_rows_receive_gradient": true,
+    "mean_is_recomputed_each_forward": true
+  },
+  "test_parameter_count_s1": 10087,
+  "test_parameter_count_center_dynamic": 10087,
+  "test_vocab_size": 23,
+  "test_input_token_count": 6
+}

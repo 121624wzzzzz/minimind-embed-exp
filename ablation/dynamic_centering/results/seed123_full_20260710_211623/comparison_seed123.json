@@ -1,0 +1,32 @@
+[
+  {
+    "variant": "s1",
+    "source": "existing_same_seed_baseline",
+    "loss": "1.738371",
+    "ppl": "5.688070",
+    "delta_vs_s1": "+0.000000",
+    "delta_vs_s3": "+0.011750",
+    "tokens": 17625568,
+    "sequences": 84688
+  },
+  {
+    "variant": "center_dynamic",
+    "source": "new_ablation",
+    "loss": "1.734176",
+    "ppl": "5.664259",
+    "delta_vs_s1": "-0.004195",
+    "delta_vs_s3": "+0.007555",
+    "tokens": 17625568,
+    "sequences": 84688
+  },
+  {
+    "variant": "s3",
+    "source": "existing_same_seed_baseline",
+    "loss": "1.726621",
+    "ppl": "5.621626",
+    "delta_vs_s1": "-0.011750",
+    "delta_vs_s3": "+0.000000",
+    "tokens": 17625568,
+    "sequences": 84688
+  }
+]
