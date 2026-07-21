@@ -1,6 +1,6 @@
 # Dynamic centering 零参数消融
 
-状态：**MiniMind-small 与 Qwen3-0.6B × FineEdu20B 两个规模的三个 seed 训练与评测均已完成**。
+状态：**两套模型/数据配置的三个 seed 训练与评测均已完成**。
 
 本实验用于判断：`s3` 相对 tied baseline `s1` 的收益，有多少可以由“去除共享 embedding
 表的全词表均值”这一固定规则解释。
@@ -101,12 +101,16 @@ U_{\mathrm{eff}}=W.
 `s3` 的自由可学习 `beta` 仍提供额外平均收益，而且这部分作用具有明显 seed 依赖：
 seed123 中 `s3` 优势较大，seed2026 中固定动态中心反而略优于 `s3`。
 
-## Qwen3-0.6B × FineEdu20B 规模放大复验
+## Qwen3-0.6B × FineEdu20B 跨配置复验
 
-为检查小模型结论能否扩展到当前最大规模，使用 Qwen3-0.6B 对齐配置（约 595.93M 参数）
-和 FineWeb-Edu 20B 数据复验同一个零参数 `center_dynamic`。三个 seed 与已有 S1/S3/S12
-基线共享 fixed-random 1% eval manifest（split seed `20260602`）、模型配置、训练超参数和
-held-out 评测口径；每项评测覆盖 199,411,665 个有效预测 token。
+为检查 MiniMind-small × MiniMind pretrain 上的结论能否迁移到另一套更大的正式配置，使用
+Qwen3-0.6B 对齐模型（约 595.93M 参数）和 FineWeb-Edu 20B 数据复验同一个零参数
+`center_dynamic`。三个 seed 与该配置已有的 S1/S3/S12 基线共享 fixed-random 1% eval
+manifest（split seed `20260602`）、模型配置、训练超参数和 held-out 评测口径；每项评测覆盖
+199,411,665 个有效预测 token。
+
+这不是只改变模型规模的单变量实验：相对 MiniMind-small 实验，模型规模、训练数据和完整训练
+过程都发生了变化。因此这组实验检验的是结论能否跨配置复现，不能单独识别规模或数据集效应。
 
 | variant | seed42 | seed123 | seed2026 | mean loss | std | mean delta vs S1 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -115,23 +119,28 @@ held-out 评测口径；每项评测覆盖 199,411,665 个有效预测 token。
 | `s3` | 2.741402 | 2.758531 | 2.751138 | 2.750357 | 0.007015 | -0.008360 |
 | `s12` | 2.745604 | 2.751806 | 2.744375 | **2.747262** | 0.003252 | -0.011455 |
 
-规模放大后出现明确反转：`center_dynamic` 在三个 seed 上都差于 S1，平均 loss 高
-0.031455（+1.140%），同时也差于 S3 和 S12。完整结果见
+两套模型/数据配置的结果方向相反：在 Qwen3-0.6B × FineEdu20B 上，`center_dynamic` 三个
+seed 都差于 S1，平均 loss 高 0.031455（+1.140%），同时也差于 S3 和 S12。完整结果见
 [FineEdu20B × Qwen3-0.6B 结果](results/fineedu-qwen3-0.6b-randsplit/README.md)。
 
-## 跨规模结论
+## 跨配置结论
 
-动态去除当前全词表均值在 MiniMind-small 上稳定有效，并可解释 S3 平均收益的约 63.8%；
-但该收益没有扩展到 Qwen3-0.6B × FineEdu20B。因此，“公共均值方向参与了小模型收益”仍是
-有证据支持的机制结论，而“严格零均值本身是跨规模通用训练技巧”则不受当前结果支持。
+| 模型配置 | 训练数据 | center_dynamic vs S1 mean loss | 三 seed 方向 |
+| --- | --- | ---: | --- |
+| MiniMind-small（63.92M） | MiniMind pretrain | **-0.004827** | 三个 seed 均改善 |
+| Qwen3-0.6B 对齐配置（595.93M） | FineWeb-Edu 20B | **+0.031455** | 三个 seed 均退化 |
 
-更自然的下一步是检验带可学习残余 bias、受控偏置强度或乘性自由度的中心化形式，判断大规模
-退化来自严格约束过强，还是来自数据、规模与优化过程的交互。
+在 MiniMind-small × MiniMind pretrain 上，动态去均值稳定优于 S1，并可解释 S3 平均收益的
+约 63.8%；在 Qwen3-0.6B × FineEdu20B 上，它却稳定差于 S1。当前最直接的结论是该操作的
+效果依赖模型/数据/训练配置，而不是跨配置稳定的训练技巧。
+
+由于两组实验同时改变了模型规模和数据集，现有结果不能判断差异具体来自规模、数据还是优化
+过程。要拆分原因，需要补充同数据跨模型规模、同规模跨数据集的受控实验；带可学习残余 bias、
+受控偏置强度或乘性自由度则是后续结构改进方向。
 
 ## 结果目录
 
-正式结果使用稳定的语义路径；运行时间记录在结果 README、`run_metadata.json` 或被忽略的
-日志中：
+正式结果使用稳定的语义路径：
 
 ```text
 results/minimind-small-fixedinit-randsplit/
@@ -157,7 +166,7 @@ results/fineedu-qwen3-0.6b-randsplit/
 - [三 seed 汇总](results/minimind-small-fixedinit-randsplit/eval_summary.csv)
 - [机制恢复比例](results/minimind-small-fixedinit-randsplit/mechanism_recovery.csv)
 - [逐 seed 对比](results/minimind-small-fixedinit-randsplit/per_seed_comparison.csv)
-- [Qwen3-0.6B 规模放大完整结果](results/fineedu-qwen3-0.6b-randsplit/README.md)
+- [Qwen3-0.6B × FineEdu20B 跨配置完整结果](results/fineedu-qwen3-0.6b-randsplit/README.md)
 - [Qwen3-0.6B 三 seed 汇总](results/fineedu-qwen3-0.6b-randsplit/eval_summary.csv)
 
 ## 复现
@@ -179,19 +188,10 @@ bash ablation/dynamic_centering/run_remaining_seeds.sh
 最终权重保存在 `weights/final/minimind-small-dynamic-centering-randsplit/seed<seed>/`，不加入
 Git；源码、检查报告和紧凑结果加入 Git。
 
-Qwen3-0.6B × FineEdu20B 规模放大复验使用通用正式入口：
+Qwen3-0.6B × FineEdu20B 跨配置复验使用通用正式入口：
 
 ```bash
 VARIANTS=center_dynamic \
 WEIGHT_NAMESPACE=fineedu-qwen3-0.6b-center-dynamic \
 bash scripts/experiments/run_fineedu_qwen3_0_6b.sh
 ```
-
-## 运行记录
-
-MiniMind-small 的 seed42、seed123、seed2026 完整训练与评测时间分别约为 69、71、108
-分钟，精确起止时间记录在各 seed 的 `run_metadata.json` 中。
-
-Qwen3-0.6B × FineEdu20B 的三个 seed 顺序运行，从 2026-07-15 19:45:39 到
-2026-07-21 10:39:16，共约 134 小时 54 分钟；各 seed 训练后均完成同一 held-out split 的
-8-GPU 并行评测。

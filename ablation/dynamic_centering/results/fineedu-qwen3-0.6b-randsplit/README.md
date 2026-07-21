@@ -41,13 +41,14 @@
 
 ## 结论
 
-MiniMind-small 上观察到的动态去均值收益没有扩展到 Qwen3-0.6B × FineEdu20B：在本次
-更大模型、更大数据和更长训练口径下，零参数 `center_dynamic` 稳定退化，并且 seed 间方差
-也高于三组基线。因此它可以继续作为解释小模型 S3 收益的机制消融，但当前结果不支持把它
-当作跨规模稳定有效的独立训练技巧。
+两套模型/数据配置得到了相反结果：在 MiniMind-small × MiniMind pretrain 上，动态去均值
+稳定优于 S1；在 Qwen3-0.6B × FineEdu20B 上，零参数 `center_dynamic` 三个 seed 均稳定
+退化，并且 seed 间方差也高于三组基线。当前结果因此不支持把它视为跨配置稳定有效的独立
+训练技巧。
 
-这种规模反转本身是重要结果，后续更值得检验的是允许保留一定可学习偏置或加入乘性自由度，
-而不是把 embedding 均值严格固定为零。
+两组实验同时改变了模型规模、训练数据和完整训练过程，所以不能把差异单独归因于规模或数据集。
+要拆分原因，需要补充同数据跨规模、同规模跨数据集的受控实验。结构上则值得检验允许保留一定
+可学习偏置或加入乘性自由度，而不是把 embedding 均值严格固定为零。
 
 ## 文件
 
@@ -58,5 +59,4 @@ MiniMind-small 上观察到的动态去均值收益没有扩展到 Qwen3-0.6B ×
 未纳入 Git 的原始运行目录为
 `logs/fineedu-qwen3-0.6b/20260715_fineedu20b_center_dynamic/`；最终权重与 resume checkpoint
 分别位于 `weights/final/fineedu-qwen3-0.6b-center-dynamic/` 和
-`weights/resume/fineedu-qwen3-0.6b-center-dynamic/`。正式运行从 2026-07-15 19:45:39 到
-2026-07-21 10:39:16。
+`weights/resume/fineedu-qwen3-0.6b-center-dynamic/`。

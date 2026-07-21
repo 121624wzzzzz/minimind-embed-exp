@@ -90,7 +90,7 @@
 - 训练时间：2026-06-11 到 2026-06-28。
 - 结果文件：`fineedu-qwen3-0.6b/three_seed_summary.csv`
 - 简要结论：换到 FineEdu 20B 后 `s12` 重新优于 `s1`，整体为 `s12 > s3 > s1`。
-- Dynamic centering 规模放大复验：
+- Dynamic centering 跨模型/数据配置复验：
   [`ablation/dynamic_centering/results/fineedu-qwen3-0.6b-randsplit/`](../../ablation/dynamic_centering/results/fineedu-qwen3-0.6b-randsplit/)
 
 ### historical-minimind-pretrain-v2-tail
