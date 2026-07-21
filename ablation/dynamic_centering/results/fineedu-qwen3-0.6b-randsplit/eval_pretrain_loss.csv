@@ -1,0 +1,4 @@
+seed,variant,loss,ppl,tokens,sequences,seconds,data_path,start_index,max_samples
+42,center_dynamic,2.771955,15.989866,199411665,588235,486.37,dataset/fineweb_edu/packed/qwen3_20b_seq340,0,588235
+123,center_dynamic,2.799285,16.432893,199411665,588235,486.08,dataset/fineweb_edu/packed/qwen3_20b_seq340,0,588235
+2026,center_dynamic,2.799276,16.432739,199411665,588235,486.05,dataset/fineweb_edu/packed/qwen3_20b_seq340,0,588235

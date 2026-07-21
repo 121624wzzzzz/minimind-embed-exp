@@ -1,6 +1,6 @@
 # Dynamic centering 零参数消融
 
-状态：**三个 seed 的完整训练与评测均已完成**。
+状态：**MiniMind-small 与 Qwen3-0.6B × FineEdu20B 两个规模的三个 seed 训练与评测均已完成**。
 
 本实验用于判断：`s3` 相对 tied baseline `s1` 的收益，有多少可以由“去除共享 embedding
 表的全词表均值”这一固定规则解释。
@@ -93,7 +93,7 @@ U_{\mathrm{eff}}=W.
 不使用三个逐 seed 比例的简单平均，因为 seed2026 的 S3 收益分母只有 0.001926，比例对
 微小变化非常敏感。
 
-## 结论
+## MiniMind-small 结论
 
 动态去除当前全词表均值本身即可稳定优于 tied baseline，并解释 `s3` 平均收益的约
 **63.8%**。因此，embedding 公共均值方向是 `s3` 收益的重要来源，但不是完整解释。
@@ -101,9 +101,37 @@ U_{\mathrm{eff}}=W.
 `s3` 的自由可学习 `beta` 仍提供额外平均收益，而且这部分作用具有明显 seed 依赖：
 seed123 中 `s3` 优势较大，seed2026 中固定动态中心反而略优于 `s3`。
 
+## Qwen3-0.6B × FineEdu20B 规模放大复验
+
+为检查小模型结论能否扩展到当前最大规模，使用 Qwen3-0.6B 对齐配置（约 595.93M 参数）
+和 FineWeb-Edu 20B 数据复验同一个零参数 `center_dynamic`。三个 seed 与已有 S1/S3/S12
+基线共享 fixed-random 1% eval manifest（split seed `20260602`）、模型配置、训练超参数和
+held-out 评测口径；每项评测覆盖 199,411,665 个有效预测 token。
+
+| variant | seed42 | seed123 | seed2026 | mean loss | std | mean delta vs S1 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `s1` | 2.755773 | 2.762714 | 2.757664 | 2.758717 | 0.002930 | +0.000000 |
+| `center_dynamic` | 2.771955 | 2.799285 | 2.799276 | 2.790172 | 0.012881 | **+0.031455** |
+| `s3` | 2.741402 | 2.758531 | 2.751138 | 2.750357 | 0.007015 | -0.008360 |
+| `s12` | 2.745604 | 2.751806 | 2.744375 | **2.747262** | 0.003252 | -0.011455 |
+
+规模放大后出现明确反转：`center_dynamic` 在三个 seed 上都差于 S1，平均 loss 高
+0.031455（+1.140%），同时也差于 S3 和 S12。完整结果见
+[FineEdu20B × Qwen3-0.6B 结果](results/fineedu-qwen3-0.6b-randsplit/README.md)。
+
+## 跨规模结论
+
+动态去除当前全词表均值在 MiniMind-small 上稳定有效，并可解释 S3 平均收益的约 63.8%；
+但该收益没有扩展到 Qwen3-0.6B × FineEdu20B。因此，“公共均值方向参与了小模型收益”仍是
+有证据支持的机制结论，而“严格零均值本身是跨规模通用训练技巧”则不受当前结果支持。
+
+更自然的下一步是检验带可学习残余 bias、受控偏置强度或乘性自由度的中心化形式，判断大规模
+退化来自严格约束过强，还是来自数据、规模与优化过程的交互。
+
 ## 结果目录
 
-正式结果使用稳定的语义路径，运行时间只保留在 `run_metadata.json` 和日志中：
+正式结果使用稳定的语义路径；运行时间记录在结果 README、`run_metadata.json` 或被忽略的
+日志中：
 
 ```text
 results/minimind-small-fixedinit-randsplit/
@@ -115,6 +143,12 @@ results/minimind-small-fixedinit-randsplit/
 ├── seed42/
 ├── seed123/
 └── seed2026/
+
+results/fineedu-qwen3-0.6b-randsplit/
+├── README.md
+├── eval_pretrain_loss.csv
+├── eval_summary.csv
+└── per_seed_comparison.csv
 ```
 
 主要入口：
@@ -123,6 +157,8 @@ results/minimind-small-fixedinit-randsplit/
 - [三 seed 汇总](results/minimind-small-fixedinit-randsplit/eval_summary.csv)
 - [机制恢复比例](results/minimind-small-fixedinit-randsplit/mechanism_recovery.csv)
 - [逐 seed 对比](results/minimind-small-fixedinit-randsplit/per_seed_comparison.csv)
+- [Qwen3-0.6B 规模放大完整结果](results/fineedu-qwen3-0.6b-randsplit/README.md)
+- [Qwen3-0.6B 三 seed 汇总](results/fineedu-qwen3-0.6b-randsplit/eval_summary.csv)
 
 ## 复现
 
@@ -143,7 +179,19 @@ bash ablation/dynamic_centering/run_remaining_seeds.sh
 最终权重保存在 `weights/final/minimind-small-dynamic-centering-randsplit/seed<seed>/`，不加入
 Git；源码、检查报告和紧凑结果加入 Git。
 
+Qwen3-0.6B × FineEdu20B 规模放大复验使用通用正式入口：
+
+```bash
+VARIANTS=center_dynamic \
+WEIGHT_NAMESPACE=fineedu-qwen3-0.6b-center-dynamic \
+bash scripts/experiments/run_fineedu_qwen3_0_6b.sh
+```
+
 ## 运行记录
 
-seed42、seed123、seed2026 的完整训练与评测时间分别约为 69、71、108 分钟，精确起止时间
-记录在各 seed 的 `run_metadata.json` 中。
+MiniMind-small 的 seed42、seed123、seed2026 完整训练与评测时间分别约为 69、71、108
+分钟，精确起止时间记录在各 seed 的 `run_metadata.json` 中。
+
+Qwen3-0.6B × FineEdu20B 的三个 seed 顺序运行，从 2026-07-15 19:45:39 到
+2026-07-21 10:39:16，共约 134 小时 54 分钟；各 seed 训练后均完成同一 held-out split 的
+8-GPU 并行评测。
